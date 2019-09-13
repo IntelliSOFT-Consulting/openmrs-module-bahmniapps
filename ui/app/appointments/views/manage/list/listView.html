@@ -3,8 +3,8 @@
         <date-picker view-date="startDate" last-valid-date="lastValidDate" on-change="getAppointmentsForDate"></date-picker>
     </div>
     <p class="app-patient-search">
-    <a ng-click="goBackToPreviousView()" ng-show="searchedPatient">{{::'RESET_KEY' | translate}} {{::'PATIENT_LIST_VIEW_SEARCH_HEADER' | translate}}</a>
-    <patient-search on-search="displaySearchedPatient"></patient-search>
+        <a ng-click="goBackToPreviousView()" ng-show="searchedPatient">{{::'RESET_KEY' | translate}} {{::'PATIENT_LIST_VIEW_SEARCH_HEADER' | translate}}</a>
+        <patient-search on-search="displaySearchedPatient"></patient-search>
     </p>
     <button ng-show="!hasNoAppointments()" ng-click="printPage()" class="list-view-print-btn"><i class="fa fa-print" aria-hidden="true"></i></button>
     <div class="app-list-view">
@@ -26,14 +26,9 @@
                 <td>{{::appointment.patient.identifier}}</td>
                 <td class="table-mid-width">{{::appointment.patient.name | titleCase}}</td>
                 <td>{{::appointment.startDateTime | bahmniDate}}</td>
-                <td>{{::appointment.startDateTime | bahmniTime}}</td>
-                <td>{{::appointment.endDateTime | bahmniTime}}</td>
-                <td class="table-mid-width">{{::appointment.provider.name}}</td>
-                <td ng-show="::enableSpecialities">{{::appointment.service.speciality.name}}</td>
                 <td class="table-mid-width">{{::appointment.service.name}}</td>
                 <td class="table-mid-width" ng-show="::enableServiceTypes">{{::appointment.serviceType && (appointment.serviceType.name + ' [' + appointment.serviceType.duration + ' min]')}}</td>
                 <td>{{appointment.status}}</td>
-                <td>{{:: isWalkIn(appointment.appointmentKind)}}</td>
                 <td class="table-mid-width">{{::appointment.location.name}}</td>
                 <td class="table-mid-width">{{display(appointment.additionalInfo)}}</td>
                 <td>{{::appointment.comments}}</td>
