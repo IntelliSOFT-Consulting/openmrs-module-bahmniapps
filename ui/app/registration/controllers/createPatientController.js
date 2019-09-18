@@ -180,8 +180,8 @@ angular.module('bahmni.registration')
                             ? $rootScope.patientConfiguration.attributeTypes[personAttributes.indexOf("UniqueArtNo")].name : undefined;
                         $scope.patient[personAttributeUniqueArtNo] = uniqueArtIdentifier;
                         // if ($scope.patient.primaryIdentifier) {
+                        // $scope.patient.extraIdentifiers[0].identifier = uniqueArtIdentifier;
                         $scope.patient.extraIdentifiers[0].identifier = uniqueArtIdentifier;
-                        // $scope.patient.primaryIdentifier.identifier = uniqueArtIdentifier;
                         // }
                     }).then(function () {
                         return patientService.create($scope.patient, jumpAccepted).then(function (response) {
@@ -213,9 +213,9 @@ angular.module('bahmni.registration')
                     var personAttributeUniqueArtNo = personAttributeHasUniqueArtNo
                         ? $rootScope.patientConfiguration.attributeTypes[personAttributes.indexOf("UniqueArtNo")].name : undefined;
                     // if ($scope.patient.primaryIdentifier) {
-                    // $scope.patient.primaryIdentifier.identifier = $scope.patient[personAttributeUniqueArtNo];
-                    // }
                     $scope.patient.extraIdentifiers[0].identifier = $scope.patient[personAttributeUniqueArtNo];
+                    // }
+                    // $scope.patient.extraIdentifiers[0].identifier = $scope.patient[personAttributeUniqueArtNo];
                     return patientService.create($scope.patient, jumpAccepted).then(function (response) {
                         copyPatientProfileDataToScope(response);
                     }, function (response) {
