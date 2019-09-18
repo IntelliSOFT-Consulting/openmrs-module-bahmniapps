@@ -146,23 +146,23 @@ angular.module('bahmni.registration')
                         $scope.patient[personAttributeTypeofPatient] && $scope.patient[personAttributeTypeofPatient].value === "NewPatient") {
                         for (var i = 0; i < personAttributes.length; ++i) {
                             var attrName = personAttributes[i];
-                            if (attrName !== "TypeofPatient" && attrName !== "UniqueArtNo" && $scope.patient[personAttributeTypeofPatient].value === "NewPatient") {
+                            if (attrName !== "TypeofPatient" && attrName !== "UniqueArtNo") {
                                 var attrElement = angular.element(document.getElementById(attrName));
                                 if (attrElement) {
                                     attrElement.attr('disabled', false);
                                 }
-                            } else if (attrName === "UniqueArtNo" && $scope.patient[personAttributeTypeofPatient].value === "NewPatient") {
+                            } else if (attrName === "UniqueArtNo") {
                                 var attrElement = angular.element(document.getElementById(attrName));
                                 if (attrElement) {
                                     attrElement.attr('disabled', true);
                                 }
                             }
-                            if (attrName === "TypeofPatient" && attrName === "UniqueArtNo" && $scope.patient[personAttributeTypeofPatient].value !== "NewPatient") {
+                            /* if (attrName === "TypeofPatient" && attrName === "UniqueArtNo" && $scope.patient[personAttributeTypeofPatient].value !== "NewPatient") {
                                 var attrElement = angular.element(document.getElementById(attrName));
                                 if (attrElement) {
                                     attrElement.attr('disabled', false);
                                 }
-                            }
+                            } */
                         }
                     }
                     if (personAttributeTypeofPatient && ($scope.patient[personAttributeTypeofPatient].value === "Transfer-In" ||
