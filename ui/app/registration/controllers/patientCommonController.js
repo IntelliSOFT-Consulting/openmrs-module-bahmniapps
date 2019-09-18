@@ -268,4 +268,3 @@ angular.module('bahmni.registration')
                 return data.results;
             };
         }]);
-
