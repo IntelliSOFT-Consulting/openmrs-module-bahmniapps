@@ -238,7 +238,7 @@
             </div>
         </div>
 
-        <div ng-if="::(section.canShow && section.order === 8)" ng-hide="infantPatient">
+        <div ng-if="::(section.canShow && section.order === 8)" ng-hide="infantPatient || heiRelationship">
             <div class="box-container form" ng-if="::(section.attributes.length > 0 && section.title)">
                 <legend>
                   <span>
