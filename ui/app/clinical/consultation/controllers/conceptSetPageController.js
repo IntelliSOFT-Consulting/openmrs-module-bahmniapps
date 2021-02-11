@@ -92,14 +92,14 @@ angular.module('bahmni.clinical')
                         } 
                         else if ((currentuserRoleName == "PMTCT") && (currentuserRoleName != "superman")){
                             for (var i = allTemplates.length - 1; i >= 0; i--) {
-                                if (allTemplates[i].uuid == endoffollowupform || allTemplates[i].uuid == anccard || allTemplates[i].uuid == maternityform || allTemplates[i].uuid == personalhist || allTemplates[i].uuid == familyhistdata) {
+                                if (allTemplates[i].uuid == endoffollowupform || allTemplates[i].uuid == personalhist || allTemplates[i].uuid == familyhistdata) {
                                     allTemplates.splice(i, 1);
                                 }
                             }
                         }
                         else if ((currentuserRoleName == "PMTCT (HEI)") && (currentuserRoleName != "superman")){
                             for (var i = allTemplates.length - 1; i >= 0; i--) {
-                                if (allTemplates[i].uuid == arthistoryclinical || allTemplates[i].uuid == arttreatmentform || allTemplates[i].uuid == artandhivfollowup || allTemplates[i].uuid == endoffollowupform || allTemplates[i].uuid == anccard || allTemplates[i].uuid == viralload || allTemplates[i].uuid == maternityform || allTemplates[i].uuid == personalhist || allTemplates[i].uuid == familyhistdata) {
+                                if (allTemplates[i].uuid == arthistoryclinical || allTemplates[i].uuid == arttreatmentform || allTemplates[i].uuid == artandhivfollowup || allTemplates[i].uuid == endoffollowupform || allTemplates[i].uuid == viralload || allTemplates[i].uuid == personalhist || allTemplates[i].uuid == familyhistdata) {
                                     allTemplates.splice(i, 1);
                                 }
                             }
