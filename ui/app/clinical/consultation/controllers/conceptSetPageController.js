@@ -76,21 +76,35 @@ angular.module('bahmni.clinical')
                             }
                         }
                         var currentuserRoleName = $rootScope.currentUser.roles[0].name;
-                        if ((currentuserRoleName == "Data Clerk") && (currentuserRoleName != "superman")){
+                        //define the other user roles
+                        var currentuserRoleNameTwoUndefined = $rootScope.currentUser.roles[1];
+                        var currentuserRoleNameTwo = $rootScope.currentUser.roles[1].name;
+                        if ((currentuserRoleName == "Data Clerk") && (currentuserRoleName != "superman") && (currentuserRoleNameTwoUndefined==undefined)){
+                            console.log("Data cleark is working");
                             for (var i = allTemplates.length - 1; i >= 0; i--) {
                                 if (allTemplates[i].uuid == arthistoryclinical || allTemplates[i].uuid == arttreatmentform || allTemplates[i].uuid == artandhivfollowup || allTemplates[i].uuid == endoffollowupform || allTemplates[i].uuid == anccard || allTemplates[i].uuid == viralload || allTemplates[i].uuid == tbscreeningform || allTemplates[i].uuid == eacforms || allTemplates[i].uuid == maternityform) {
                                     allTemplates.splice(i, 1);
                                 }
                             }
                         } 
-                        else if ((currentuserRoleName == "PMTCT") && (currentuserRoleName != "superman")){
+                        else if ((currentuserRoleName == "PMTCT" && currentuserRoleNameTwoUndefined==undefined)){
+                            console.log("PMTCT is working with undefined")
                             for (var i = allTemplates.length - 1; i >= 0; i--) {
                                 if (allTemplates[i].uuid == endoffollowupform || allTemplates[i].uuid == anccard || allTemplates[i].uuid == maternityform || allTemplates[i].uuid == personalhist || allTemplates[i].uuid == familyhistdata) {
                                     allTemplates.splice(i, 1);
                                 }
                             }
                         }
+                        else if ((currentuserRoleName == "PMTCT") && (currentuserRoleNameTwo == "MATERNITY")){
+                            console.log("Both roles are working Perfectly")
+                            for (var i = allTemplates.length - 1; i >= 0; i--) {
+                                if (allTemplates[i].uuid == endoffollowupform || allTemplates[i].uuid == personalhist || allTemplates[i].uuid == familyhistdata) {
+                                    allTemplates.splice(i, 1);
+                                }
+                            }
+                        }
                         else if ((currentuserRoleName == "PMTCT (HEI)") && (currentuserRoleName != "superman")){
+                            console.log("PMTCT HEI is working"+currentuserRoleName);
                             for (var i = allTemplates.length - 1; i >= 0; i--) {
                                 if (allTemplates[i].uuid == arthistoryclinical || allTemplates[i].uuid == arttreatmentform || allTemplates[i].uuid == artandhivfollowup || allTemplates[i].uuid == endoffollowupform || allTemplates[i].uuid == anccard || allTemplates[i].uuid == viralload || allTemplates[i].uuid == maternityform || allTemplates[i].uuid == personalhist || allTemplates[i].uuid == familyhistdata) {
                                     allTemplates.splice(i, 1);
@@ -98,6 +112,7 @@ angular.module('bahmni.clinical')
                             }
                         }
                         else if ((currentuserRoleName == "EAC") && (currentuserRoleName != "superman")){
+                            console.log("EAC is working"+currentuserRoleName);
                             for (var i = allTemplates.length - 1; i >= 0; i--) {
                                 if (allTemplates[i].uuid == arthistoryclinical || allTemplates[i].uuid == arttreatmentform || allTemplates[i].uuid == artandhivfollowup || allTemplates[i].uuid == endoffollowupform || allTemplates[i].uuid == anccard || allTemplates[i].uuid == viralload || allTemplates[i].uuid == tbscreeningform || allTemplates[i].uuid == maternityform || allTemplates[i].uuid == personalhist || allTemplates[i].uuid == familyhistdata) {
                                     allTemplates.splice(i, 1);
@@ -105,6 +120,7 @@ angular.module('bahmni.clinical')
                             }
                         }
                         else if ((currentuserRoleName == "CLINICIAN") && (currentuserRoleName != "superman")){
+                            console.log("Clinician is working!"+currentuserRoleName);
                             for (var i = allTemplates.length - 1; i >= 0; i--) {
                                 if ( allTemplates[i].uuid == arttreatmentform || allTemplates[i].uuid == endoffollowupform || allTemplates[i].uuid == anccard || allTemplates[i].uuid == eacforms || allTemplates[i].uuid == maternityform) {
                                     allTemplates.splice(i, 1);
@@ -112,6 +128,7 @@ angular.module('bahmni.clinical')
                             }
                         } 
                         else if ((currentuserRoleName == "MATERNITY") && (currentuserRoleName != "superman")){
+                            console.log("Maternity is working"+currentuserRoleName);
                             for (var i = allTemplates.length - 1; i >= 0; i--) {
                                 if (allTemplates[i].uuid == arthistoryclinical || allTemplates[i].uuid == arttreatmentform || allTemplates[i].uuid == artandhivfollowup || allTemplates[i].uuid == endoffollowupform || allTemplates[i].uuid == viralload || allTemplates[i].uuid == tbscreeningform || allTemplates[i].uuid == eacforms || allTemplates[i].uuid == personalhist || allTemplates[i].uuid == familyhistdata) {
                                     allTemplates.splice(i, 1);
@@ -119,6 +136,7 @@ angular.module('bahmni.clinical')
                             }
                         }
                         else {
+                            console.log("This is an else statement"+currentuserRoleName);
                             for (var i = allTemplates.length - 1; i >= 0; i--) {
                                 if (allTemplates[i].uuid == personalhist || allTemplates[i].uuid == familyhistdata) {
                                     allTemplates.splice(i, 1);
