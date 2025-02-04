@@ -6,7 +6,7 @@
   position: relative;
   h2 {
     padding: 10px;
-    font-family: $OpenSansBoldFont;
+    font-family: $PoppinsBoldFont;
     margin-bottom: 0;
   }
   .placeholder-message {
@@ -16,12 +16,12 @@
     text-align: center;
   }
   section.block {
-    padding: 0!important;
+    padding: 0 !important;
     border-radius: 0 0 5px 5px;
   }
   section {
     label.date {
-      font-family: $OpenSansBoldFont;
+      font-family: $PoppinsBoldFont;
       background: $lightestGray;
       padding: 10px;
       display: block;
@@ -35,7 +35,8 @@
       border: 0;
       .form-field {
         padding: 0;
-        border: 0;}
+        border: 0;
+      }
     }
     .form-field {
       border-bottom: 1px solid $lightGray;
@@ -48,9 +49,9 @@
         width: 45%;
         display: inline-block;
       }
-    .value-text-only {
+      .value-text-only {
         display: inline-block;
-    }
+      }
     }
     .is-abnormal .field-attribute {
       color: red;

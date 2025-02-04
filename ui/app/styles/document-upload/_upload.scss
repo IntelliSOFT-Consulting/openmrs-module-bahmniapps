@@ -1,6 +1,7 @@
 .document-upload {
   font-size: 14px;
-  .upload-header, .upload-header header {
+  .upload-header,
+  .upload-header header {
     background: $bahmniSecondaryColor;
   }
   header {
@@ -20,7 +21,6 @@
   }
   .main {
     &.opd-content-wrapper {
-
     }
     h5 {
       height: 40px;
@@ -56,140 +56,141 @@
       float: right;
     }
     .visit-content {
-        padding: 10px 10px 15px 10px;
-        label.btn {
-            border-radius: 3px;
-            background: linear-gradient(to bottom, $white, $lightestGray);
-            background-color: $lightestGray;
-            border: 1px solid $lightGray;
-            padding: 21px 30px;
-            display: inline-block;
-            line-height: 1.2em;
-            color: $darkGray;
-            cursor: pointer;
-            min-width: 0;
-            max-width: 300px;
-            text-decoration: none;
-            @media screen and (max-width: 480px) {
-            width: 49%;
-            padding-left: 0;
-            padding-right: 0;
-            text-align: center;
-            padding: 20px 0;
-            margin-top: 8px;
-            }
+      padding: 10px 10px 15px 10px;
+      label.btn {
+        border-radius: 3px;
+        background: linear-gradient(to bottom, $white, $lightestGray);
+        background-color: $lightestGray;
+        border: 1px solid $lightGray;
+        padding: 21px 30px;
+        display: inline-block;
+        line-height: 1.2em;
+        color: $darkGray;
+        cursor: pointer;
+        min-width: 0;
+        max-width: 300px;
+        text-decoration: none;
+        @media screen and (max-width: 480px) {
+          width: 49%;
+          padding-left: 0;
+          padding-right: 0;
+          text-align: center;
+          padding: 20px 0;
+          margin-top: 8px;
         }
-        button[disabled] {
-          position: relative;
-          top: 1px;
-          color: $lightestGray;
-        }
-        .btn {
-          padding: 20px 30px;
-          &.btn-primary {
-            background: $bahmniSecondaryColor;
-            color: $white;
+      }
+      button[disabled] {
+        position: relative;
+        top: 1px;
+        color: $lightestGray;
+      }
+      .btn {
+        padding: 20px 30px;
+        &.btn-primary {
+          background: $bahmniSecondaryColor;
+          color: $white;
 
-            &[disabled] {
-              background: grey;
-            }
-          }
-          @media screen and (max-width: 480px) {
-            width: 49%;
-            padding-left: 0;
-            padding-right: 0;
-            text-align: center;
-            padding: 20px 0;
-            margin-top: 8px;
+          &[disabled] {
+            background: grey;
           }
         }
-        .files > li {
-          clear: both;
+        @media screen and (max-width: 480px) {
+          width: 49%;
+          padding-left: 0;
+          padding-right: 0;
+          text-align: center;
+          padding: 20px 0;
+          margin-top: 8px;
+        }
+      }
+      .files > li {
+        clear: both;
+        overflow: auto;
+        border-bottom: 1px solid $lightestGray;
+        padding: 10px 0;
+        &:last-child {
+          border-bottom: 0;
+        }
+        .upload-inline-buttons {
+          float: left;
+        }
+        img {
+          float: left;
+          width: 50px;
+          height: 50px;
+          background: $lightestGray;
+          padding: 5px;
+          margin-right: 10px;
+        }
+        .concept-name {
+          min-width: 200px;
+          margin: 0;
+        }
+        .concept-name.saved {
+          font-family: $PoppinsBoldFont;
+          border: 1px solid $lightGray;
+          width: 200px;
+        }
+        .placeholder {
+          width: 50px;
+          height: 50px;
+          padding: 2px;
+          float: left;
+          margin: 5px 20px 5px 2px;
+          text-align: center;
+          i {
+            color: green;
+            font-size: 20px;
+            line-height: 55px;
+            width: 40px;
+          }
+        }
+        .file {
           overflow: auto;
-          border-bottom: 1px solid $lightestGray;
-          padding:10px 0;
-          &:last-child {
-            border-bottom: 0;
+          float: left;
+          width: 95%;
+          padding-right: 10px;
+          box-sizing: border-box;
+          @media screen and (max-width: 480px) {
+            width: 80%;
           }
-          .upload-inline-buttons {
-            float: left;
-          }
-          img {
-            float: left;
-            width: 50px;
-            height: 50px;
-            background: $lightestGray;
-            padding: 5px;
-            margin-right: 10px;
-          }
-          .concept-name {
-            min-width: 200px;
-            margin: 0;
-          }
-          .concept-name.saved {
-            font-family: $OpenSansBoldFont;
-            border: 1px solid $lightGray;
-            width: 200px;
-          }
-          .placeholder {
-            width: 50px;
-            height: 50px;
-            padding: 2px;
-            float: left;
-            margin: 5px 20px 5px 2px;
-            text-align: center;
-            i {
-              color: green;
-              font-size: 20px;
-              line-height: 55px;
-              width: 40px;
-            }
-          }
-          .file {
-            overflow: auto;
-            float: left;
-            width: 95%;
-            padding-right: 10px;
+          .obs-comment-section {
             box-sizing: border-box;
-            @media screen and (max-width: 480px) {
-              width: 80%;
-            }
-            .obs-comment-section{
-              box-sizing: border-box;
-              width:100% ;
-            }
+            width: 100%;
           }
-          .file-actions {
-            clear: right;
-            float: right;
-            padding: 10px 0;
-            @media screen and (max-width: 480px) {
-              width: 100%;
-              -webkit-box-sizing: border-box;
-              -moz-box-sizing: border-box;
-              box-sizing: border-box;
-            }
+        }
+        .file-actions {
+          clear: right;
+          float: right;
+          padding: 10px 0;
+          @media screen and (max-width: 480px) {
+            width: 100%;
+            -webkit-box-sizing: border-box;
+            -moz-box-sizing: border-box;
+            box-sizing: border-box;
           }
-          .file-remove {
-            float: right;
-            .row-remover{
-              margin-top:0;
-              span.fa-undo {
-                color: $darkGray;
-              }
+        }
+        .file-remove {
+          float: right;
+          .row-remover {
+            margin-top: 0;
+            span.fa-undo {
+              color: $darkGray;
             }
           }
         }
+      }
     }
     input:invalid {
-      border: solid 2px $clinicalFormInvalid; 
+      border: solid 2px $clinicalFormInvalid;
     }
     select:invalid {
       border: solid 2px $clinicalFormInvalid;
     }
 
     @media screen and (max-width: 480px) {
-      .field-value, form select {
+      .field-value,
+      form select {
         width: 100%;
         -webkit-box-sizing: border-box;
         -moz-box-sizing: border-box;
@@ -230,10 +231,13 @@
         position: relative;
         border-bottom: 1px solid $lightGray;
         height: 65px;
-        &:hover, &:focus, &:active {
+        &:hover,
+        &:focus,
+        &:active {
           cursor: pointer;
           background: $lightestGray;
-          .fa-user, h3 {
+          .fa-user,
+          h3 {
             color: $bahmniSecondaryColor;
           }
         }
@@ -259,7 +263,8 @@
             .village {
               font-size: 14px;
             }
-            .gender, .age {
+            .gender,
+            .age {
               font-size: 14px;
               display: inline-block;
               padding: 3px;
@@ -287,7 +292,7 @@
 button.mfp-close {
   font-size: 50px;
   color: $white;
-  opacity: 1!important;
+  opacity: 1 !important;
   &:before {
     content: "Close";
     font-size: 24px;
@@ -297,8 +302,8 @@ button.mfp-close {
   }
 }
 button.mfp-close:hover {
-  background: none!important;
-  cursor: pointer!important;
+  background: none !important;
+  cursor: pointer !important;
 }
 .white-popup {
   button.mfp-close {
@@ -309,7 +314,8 @@ button.mfp-close:hover {
   top: initial;
 }
 .visit-content form p {
-  margin-bottom: 0;}
+  margin-bottom: 0;
+}
 
 .document-upload {
   .patient-details {
@@ -320,30 +326,30 @@ button.mfp-close:hover {
     transform: translateX(-50%);
     -webkit-transform: translateX(-50%);
     color: $lightestGray;
-    font-size:16px;
-    right:auto;
+    font-size: 16px;
+    right: auto;
   }
 }
 
 @media screen and (max-width: 1024px) {
-    .document-upload {
-      .main.opd-content-wrapper {
-
-      }
-      header h1.patient-details {
-        font-size: 14px;
-        position: absolute;
-      }
-	    .doc-upload-accordion {
-		    padding-top: 20px;
-	    }
-
-	    .messages {
-		    .error-message, .info-message {
-			    top: 70px;
-		    }
-	    }
+  .document-upload {
+    .main.opd-content-wrapper {
     }
+    header h1.patient-details {
+      font-size: 14px;
+      position: absolute;
+    }
+    .doc-upload-accordion {
+      padding-top: 20px;
+    }
+
+    .messages {
+      .error-message,
+      .info-message {
+        top: 70px;
+      }
+    }
+  }
 }
 
 @media screen and (max-width: 760px) {

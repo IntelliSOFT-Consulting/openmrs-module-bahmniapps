@@ -1,15 +1,16 @@
-.audit-log-filter, .audit-log-table {
+.audit-log-filter,
+.audit-log-table {
   border: 1px solid $lightGray;
   background: $white;
   border-radius: 3px;
   overflow: hidden;
   margin: 5px 0 10px;
   header {
-    font-family: OpenSans, Arial, sans-serif;
+    font-family: Poppins, Arial, sans-serif;
     padding: 10px;
     margin-top: 0;
     margin-bottom: 0;
-    color: #FFFFFF;
+    color: #ffffff;
     font-size: 16px;
     clear: both;
     background: #669999;
@@ -18,13 +19,13 @@
   }
   .button {
     border-radius: 3px;
-    background: linear-gradient(to bottom, #A1D030, #88af28);
-    background-color: #88af28;
-    border: #88af28 1px solid;
+    background: linear-gradient(to bottom, #a1d030, #166f87);
+    background-color: #166f87;
+    border: #166f87 1px solid;
     padding: 5px 14px;
     display: inline-block;
     line-height: 1.2em;
-    color: #FFFFFF;
+    color: #ffffff;
     cursor: pointer;
     min-width: 0;
     max-width: 300px;
@@ -94,7 +95,8 @@
   tr {
     border-left: 0;
     border-right: 0;
-    th, td {
+    th,
+    td {
       &:first-child {
         border-left: 0;
       }

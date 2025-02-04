@@ -1,4 +1,3 @@
-
 /*doc
 ---
 title: Colors
@@ -36,7 +35,7 @@ Color patterns used in the whole Bahmni application are listed below... For usin
     </div>
 
     <div class="col-sm-3 col-xs-6">
-      <div style="background:#88af28;"><br><br><br><br><br></div>
+      <div style="background:#166f87;"><br><br><br><br><br></div>
       <pre class="text-center">$bahmniPrimaryBtnColorHover</pre>
     </div>
 
@@ -159,9 +158,6 @@ Color patterns used in the whole Bahmni application are listed below... For usin
 
 */
 
-
-
-
 /*doc
 ---
 title: Fonts
@@ -172,58 +168,52 @@ Below listed fonts are used in the whole Bahmni application.
 
 ```html_example
   <div>
-   <span style="font-family: OpenSansBold;">font-family: $OpenSansBoldFont;</span><br/>
-   <span>font-family: $OpenSansFont;</span><br/>
-   <span style="font-family: OpenSansLight;">font-family: $primaryLightFont;</span><br/>
-   <span style="font-family: OpenSansItalic;"> font-family: $primaryItalicFont;</span><br/>
+   <span style="font-family: PoppinsBold;">font-family: $PoppinsBoldFont;</span><br/>
+   <span>font-family: $PoppinsFont;</span><br/>
+   <span style="font-family: PoppinsLight;">font-family: $primaryLightFont;</span><br/>
+   <span style="font-family: PoppinsItalic;"> font-family: $primaryItalicFont;</span><br/>
   </div>
 ```
 
 */
-
-
-
-
 
 /* settings */
 $max-page-width: 1300px;
 
 /*  _colors - bahmniTheme:  */
 $bahmniPrimaryColor: #00463f;
-$bahmniSecondaryColor: #669999;
-$bahmniTertiaryColor: #457FAC;
+$bahmniSecondaryColor: #166f87;
+$bdsecExtraDarkColor: #1D2F3B;
+$bahmniTertiaryColor: #457fac;
 
 $bahmniLinkColor: #2b95ff;
 
 $bahmniPrimaryBtnColor: #a1d030;
-$bahmniPrimaryBtnColorHover: #88af28;
+$bahmniPrimaryBtnColorHover: #166f87;
 
 $bahmniSectionHeaderColor: #66b298;
 
-
 /*  _components - bahmniTheme: */
-$clinicalNotesColor: #EFF8FF;
-$clinicalCurrentVist: #E8A000;
+$clinicalNotesColor: #eff8ff;
+$clinicalCurrentVist: #e8a000;
 $clinicalInfoMessageBg: #e8edf3;
 $clinicalRemoveBtn: #660000;
 $clinicalHighlight: #cceffc;
 
-
 $clinicalFormInvalid: #ffcdcd;
 $clinicalFormFocus: #007fff;
 $clinicalFormFocusBg: #fffdf7;
-$clinicalFormWarning: #FFFAD8;
+$clinicalFormWarning: #fffad8;
 
 // New Observation Template Color
 
-$observationTitleHover:#b7e5e5;
-
+$observationTitleHover: #b7e5e5;
 
 /*  _different shades of grey/gray:  */
-$darkGray:     #333;
-$mediumGray:   #666;       /* any text will not be lighter than this */
-$lightGray:    #ccc;     /* any border will not be lighter than this */
-$lighterGray:  #ddd; 
+$darkGray: #333;
+$mediumGray: #666; /* any text will not be lighter than this */
+$lightGray: #ccc; /* any border will not be lighter than this */
+$lighterGray: #ddd;
 $lightestGray: #eee; /* any background will not be lighter than this */
 
 $primarySectionGridBorder: #bbb;
@@ -238,25 +228,25 @@ $fontPath: "../styles/fonts";
 $customFontPath: "../styles/fonts/bahmni-custom-fonts";
 
 //colors
-$alertBackground: #FFFDF0;
-$bodyBackground: #EEE;
+$alertBackground: #fffdf0;
+$bodyBackground: #eee;
 
-$white: #FFFFFF;
+$white: #ffffff;
 $black: #000000;
-$darkerGrey: #BBB;
+$darkerGrey: #bbb;
 $lighterGrey: #f3f3f3;
 
 //openMrs colors
 $highlight: darken(#009384, 15%);
-$text: darken(#5B57A6, 20%);
+$text: darken(#5b57a6, 20%);
 $subtleText: darken($darkerGrey, 25%);
 $subtlerText: $darkerGrey;
 
-$link: #007FFF;
-$focus: #FFFDF7;
+$link: #007fff;
+$focus: #fffdf7;
 
-$success: #A1D030;
-$alert: #FFA000;
+$success: #a1d030;
+$alert: #ffa000;
 $error: #ff6666;
 $successBackground: #ddffdd;
 
@@ -266,39 +256,37 @@ $defaultSpacing: 10px;
 $mediumSpacing: 15px;
 $largeSpacing: 20px;
 
-
 /* _fonts */
 
-$OpenSansBoldFont: OpenSansBold, Arial, sans-serif;
-$OpenSansFont: OpenSans, Arial, sans-serif;
+$PoppinsBoldFont: PoppinsBold, Arial, sans-serif;
+$PoppinsFont: Poppins, Arial, sans-serif;
 
-$OpenSansSemiBoldFont: 'OpenSansSemiBold';
+$PoppinsSemiBoldFont: "PoppinsSemiBold";
 
-$primaryFont: "OpenSans";
-$primaryBoldFont: "OpenSansBold";
-$primaryLightFont: "OpenSansLight";
-$primaryItalicFont: "OpenSansItalic";
-
+$primaryFont: "Poppins";
+$primaryBoldFont: "PoppinsBold";
+$primaryLightFont: "PoppinsLight";
+$primaryItalicFont: "PoppinsItalic";
 
 /* _mixins */
 @mixin font-size($sizeValue: 1) {
-    font-size: ($sizeValue * 16) + px;
-    font-size: $sizeValue + rem;
+  font-size: ($sizeValue * 16) + px;
+  font-size: $sizeValue + rem;
 }
 
 @mixin clearfix() {
-  *zoom:1;
+  *zoom: 1;
   &:before,
   &:after {
-      content:"";
-      display:table;
+    content: "";
+    display: table;
   }
   &:after {
-      clear:both;
+    clear: both;
   }
 }
 
-@mixin box-shadow-for-section{
+@mixin box-shadow-for-section {
   box-shadow: 0 2px 2px 0 rgba(0, 0, 0, 0.14), 0 1px 5px 0 rgba(0, 0, 0, 0.12), 0 3px 1px -2px rgba(0, 0, 0, 0.2);
 }
 
@@ -306,25 +294,26 @@ $primaryItalicFont: "OpenSansItalic";
   -webkit-appearance: none;
   background-color: #fafafa;
   border: 1px solid #cacece;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.05), inset 0px -15px 10px -12px rgba(0,0,0,0.05);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05), inset 0px -15px 10px -12px rgba(0, 0, 0, 0.05);
   padding: 8px;
   border-radius: 3px;
   display: inline-block;
   position: relative;
 
-  &:active, &:checked:active {
-    box-shadow: 0 1px 2px rgba(0,0,0,0.05), inset 0px 1px 3px rgba(0,0,0,0.1);
+  &:active,
+  &:checked:active {
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05), inset 0px 1px 3px rgba(0, 0, 0, 0.1);
   }
-   
+
   &:checked {
     background-color: white;
     border: 1px solid #adb8c0;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.05), inset 0px -15px 10px -12px rgba(0,0,0,0.05), inset 15px 10px -12px rgba(255,255,255,0.1);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05), inset 0px -15px 10px -12px rgba(0, 0, 0, 0.05), inset 15px 10px -12px rgba(255, 255, 255, 0.1);
     color: $text;
   }
-  
+
   &:checked:after {
-    content: '\2714';
+    content: "\2714";
     font-size: 15px;
     position: absolute;
     top: -2px;
