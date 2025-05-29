@@ -1,0 +1,57 @@
+<div class="duplicate-patient-modal-wrapper" aria-labelledby="dialog-label">
+  <span class="ngdialog-start"></span>
+
+  <div class="modal-header">
+    <h3 id="dialog-label">{{'REGISTRATION_DUPLICATE_PATIENTS_FOUND' | translate}}</h3>
+    <span class="ngdialog-close"></span>
+  </div>
+
+  <div class="modal-content">
+    <div class="warning-message">
+      <i class="fa fa-exclamation-triangle"></i>
+      <p>{{'REGISTRATION_DUPLICATE_WARNING_MESSAGE' | translate}}</p>
+    </div>
+
+    <div class="duplicate-patients-list">
+      <table class="table table-striped">
+        <thead>
+          <tr>
+            <th>{{'REGISTRATION_LABEL_PATIENT_NAME' | translate}}</th>
+            <th>{{'REGISTRATION_LABEL_GENDER' | translate}}</th>
+            <th>{{'REGISTRATION_LABEL_AGE' | translate}}</th>
+            <th>{{'REGISTRATION_LABEL_IDENTIFIER' | translate}}</th>
+            <th>{{'REGISTRATION_LABEL_ADDRESS' | translate}}</th>
+            <th>{{'REGISTRATION_LABEL_ACTIONS' | translate}}</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr ng-repeat="duplicate in duplicatePatients" class="duplicate-patient-row">
+            <td>
+              <strong>{{duplicate.givenName}} {{duplicate.middleName}} {{duplicate.familyName}}</strong>
+            </td>
+            <td>{{duplicate.gender}}</td>
+            <td>{{duplicate.age}}</td>
+            <td>{{duplicate.identifier}}</td>
+            <td>{{getPatientAddress(duplicate)}}</td>
+            <td>
+              <button class="btn btn-primary btn-sm" ng-click="selectExistingPatient(duplicate)">
+                {{'REGISTRATION_SELECT_PATIENT' | translate}}
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="modal-footer">
+    <div class="dialog-button-group">
+      <button class="btn btn-secondary" ng-click="continueWithNewPatient()">
+        {{'REGISTRATION_CONTINUE_NEW_PATIENT' | translate}}
+      </button>
+      <button class="btn btn-default" ng-click="cancelRegistration()">{{'REGISTRATION_CANCEL' | translate}}</button>
+    </div>
+  </div>
+
+  <span class="ngdialog-end"></span>
+</div>
