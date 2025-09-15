@@ -45,7 +45,7 @@
     "YOU_HAVE_NOT_BEEN_SETUP_PROVIDER": "You have not been setup as a Provider, please contact administrator.",
     "COULD_NOT_GET_PROVIDER": "Could not get provider for the current user.",
     "WARNING_SERVER_TIME_ZONE_MISMATCH": "Die Zeitzone des Servers ({{Server-Zeit}}) unterscheidet sich von der Zeitzone Ihres Browsers ({{lokale Zeitzone}}). Dies kann zu falschen Darstellungen von Daten oder Berichten führen. Um weitere Hilfe zu erhalten, kontaktieren Sie bitte den Administrator.",
-    "LOGIN_PAGE_HEADER_TEXT": "BAHMNI EMR LOGIN",
+    "LOGIN_PAGE_HEADER_TEXT": "BDSEC-Cure-Blindness EMR LOGIN",
     "LOGIN_PAGE_TITLE_TEXT": "TITLE TEXT",
     "LOGIN_UNSUPPORTED_BROWSER_KEY": "Bahmni is supported on Chrome/Firefox Browser",
     "DOB_LABEL": "Date of Birth",
