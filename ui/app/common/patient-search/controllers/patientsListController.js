@@ -222,6 +222,18 @@ angular.module('bahmni.common.patientSearch')
             $rootScope.patientAdmitLocationStatus = patient.Status;
             $rootScope.selectedPatient = patient;
 
+            var queueName = $scope.search.searchType.name;
+
+            var encounterTypeMap = {
+                "COUNSELLING": "COUNSELLING",
+                "TRIAGE": "TRIAGE",
+                "CONSULTATION": "CONSULTATION",
+                "INVESTIGATION": "INVESTIGATION"
+            };
+        
+            var encounterType = encounterTypeMap[queueName] || "CONSULTATION";
+            console.log("Queue:", queueName, "Encounter Type:", encounterType);
+
             $.extend(options, {
                 patientUuid: patient.uuid,
                 visitUuid: patient.activeVisitUuid || null,
@@ -229,8 +241,12 @@ angular.module('bahmni.common.patientSearch')
                 programUuid: patient.programUuid || null,
                 enrollment: patient.enrollment || null,
                 forwardUrl: patient.forwardUrl || null,
-                dateEnrolled: patient.dateEnrolled || null
+                dateEnrolled: patient.dateEnrolled || null,
+                encounterType: encounterType
             });
+
+            console.log("Queue:", queueName, "Encounter Type:", encounterType);
+            
             var link = options.forwardUrl ? {
                 url: options.forwardUrl,
                 newTab: true
