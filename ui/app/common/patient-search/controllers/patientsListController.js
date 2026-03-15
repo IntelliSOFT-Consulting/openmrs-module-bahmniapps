@@ -223,6 +223,9 @@ angular.module('bahmni.common.patientSearch')
             $rootScope.selectedPatient = patient;
 
             var queueName = $scope.search.searchType.name;
+            // $scope.consultation.currentQueue = $scope.search.searchType.name;
+            $rootScope.queueName = queueName; // Now accessible everywhere via $rootScope
+            console.log("Global Queue Set:", $rootScope.queueName);
 
             var encounterTypeMap = {
                 "COUNSELLING": "COUNSELLING",
@@ -232,7 +235,7 @@ angular.module('bahmni.common.patientSearch')
             };
         
             var encounterType = encounterTypeMap[queueName] || "CONSULTATION";
-            console.log("Queue:", queueName, "Encounter Type:", encounterType);
+            console.log("Queues:", queueName, "Encounter Type:", encounterType);
 
             $.extend(options, {
                 patientUuid: patient.uuid,
@@ -242,10 +245,9 @@ angular.module('bahmni.common.patientSearch')
                 enrollment: patient.enrollment || null,
                 forwardUrl: patient.forwardUrl || null,
                 dateEnrolled: patient.dateEnrolled || null,
-                encounterType: encounterType
+                queueName: queueName
             });
 
-            console.log("Queue:", queueName, "Encounter Type:", encounterType);
             
             var link = options.forwardUrl ? {
                 url: options.forwardUrl,
@@ -263,9 +265,18 @@ angular.module('bahmni.common.patientSearch')
                     const rowName = patient[heading.name] ? patient[heading.name].replace(/\s/g, "").toLowerCase() : "";
                     redirectUrl = rowName && link.url[rowName] ? link.url[rowName] : link.url.default;
                 }
+                // Format the base URL with the placeholders (patientUuid, encounterType, etc.)
+                var finalUrl = appService.getAppDescriptor().formatUrl(redirectUrl, options, true);
+
+                // MANUALLY APPEND queueName if it's not already in the URL
+                if (finalUrl.indexOf('queueName=') === -1) {
+                    var separator = finalUrl.indexOf('?') === -1 ? '?' : '&';
+                    finalUrl += separator + "queueName=" + encodeURIComponent(queueName);
+                }
                 var newWindow = $window.open(
-                appService.getAppDescriptor().formatUrl(redirectUrl, options, true),
-                link.newTab ? '_blank' : link.targetedTab ? link.targetedTab : '_self');
+                    finalUrl, 
+                    link.newTab ? '_blank' : link.targetedTab ? link.targetedTab : '_self'
+                );
                 if (link.targetedTab) {
                     $timeout(function () {
                         newWindow.document.title = link.targetedTab;
