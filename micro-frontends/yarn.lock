@@ -3918,24 +3918,6 @@ bahmni-carbon-ui@0.1.6:
     prop-types "^15.8.1"
     react-intl "^6.4.4"
 
-bahmni-form-controls@^0.93.12:
-  version "0.93.12"
-  resolved "https://registry.yarnpkg.com/bahmni-form-controls/-/bahmni-form-controls-0.93.12.tgz#ff8aff5de7a8da1e0c302aeb1633bf71f58afaa1"
-  integrity sha512-YevJ+ISUIp+e+Ra7zQG5dBooJuDTLR0OCfmfuLawD4UjAYG3HjWOWKn6CFcpcT9qohI6NUPwKs2HWg2y/2ysKg==
-  dependencies:
-    base64-inline-loader "^1.1.0"
-    classnames "^2.2.5"
-    enzyme-adapter-react-16 "^1.1.0"
-    immutable "3.8.1"
-    lodash "4.17.12"
-    prop-types "^15.6.2"
-    react-intl "^3.12.0"
-    react-select "^1.0.0-rc.2"
-    react-test-renderer "^16.12.0"
-    react-textarea-autosize "^4.0.5"
-    sinon-as-promised "^4.0.3"
-    whatwg-fetch "^1.0.0"
-
 bail@^1.0.0:
   version "1.0.5"
   resolved "https://registry.yarnpkg.com/bail/-/bail-1.0.5.tgz#b6fa133404a392cbc1f8c4bf63f5953351e7a776"
@@ -3972,6 +3954,24 @@ base@^0.11.1:
     isobject "^3.0.1"
     mixin-deep "^1.2.0"
     pascalcase "^0.1.1"
+
+bdsec-form-controls@^0.0.3:
+  version "0.0.6"
+  resolved "https://registry.yarnpkg.com/bdsec-form-controls/-/bdsec-form-controls-0.0.6.tgz#b7de86b9c8af540f0b7ebd4b6475bf29ba90ed33"
+  integrity sha512-yiU/Un+RIiREyT9d2v30iRzBqed+DYteR46emYbmWUvueI0NvnRRidYck+emx69W204XdxTiHnbh1AjalR1MSQ==
+  dependencies:
+    base64-inline-loader "^1.1.0"
+    classnames "^2.2.5"
+    enzyme-adapter-react-16 "^1.1.0"
+    immutable "3.8.1"
+    lodash "4.17.12"
+    prop-types "^15.6.2"
+    react-intl "^3.12.0"
+    react-select "^1.0.0-rc.2"
+    react-test-renderer "^16.12.0"
+    react-textarea-autosize "^4.0.5"
+    sinon-as-promised "^4.0.3"
+    whatwg-fetch "^1.0.0"
 
 better-opn@^2.1.1:
   version "2.1.1"
