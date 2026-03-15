@@ -223,8 +223,7 @@ angular.module('bahmni.common.patientSearch')
             $rootScope.selectedPatient = patient;
 
             var queueName = $scope.search.searchType.name;
-            // $scope.consultation.currentQueue = $scope.search.searchType.name;
-            $rootScope.queueName = queueName; // Now accessible everywhere via $rootScope
+            $rootScope.queueName = queueName;
             console.log("Global Queue Set:", $rootScope.queueName);
 
             var encounterTypeMap = {
@@ -233,7 +232,7 @@ angular.module('bahmni.common.patientSearch')
                 "CONSULTATION": "CONSULTATION",
                 "INVESTIGATION": "INVESTIGATION"
             };
-        
+
             var encounterType = encounterTypeMap[queueName] || "CONSULTATION";
             console.log("Queues:", queueName, "Encounter Type:", encounterType);
 
@@ -248,7 +247,6 @@ angular.module('bahmni.common.patientSearch')
                 queueName: queueName
             });
 
-            
             var link = options.forwardUrl ? {
                 url: options.forwardUrl,
                 newTab: true
@@ -265,16 +263,14 @@ angular.module('bahmni.common.patientSearch')
                     const rowName = patient[heading.name] ? patient[heading.name].replace(/\s/g, "").toLowerCase() : "";
                     redirectUrl = rowName && link.url[rowName] ? link.url[rowName] : link.url.default;
                 }
-                // Format the base URL with the placeholders (patientUuid, encounterType, etc.)
                 var finalUrl = appService.getAppDescriptor().formatUrl(redirectUrl, options, true);
 
-                // MANUALLY APPEND queueName if it's not already in the URL
                 if (finalUrl.indexOf('queueName=') === -1) {
                     var separator = finalUrl.indexOf('?') === -1 ? '?' : '&';
                     finalUrl += separator + "queueName=" + encodeURIComponent(queueName);
                 }
                 var newWindow = $window.open(
-                    finalUrl, 
+                    finalUrl,
                     link.newTab ? '_blank' : link.targetedTab ? link.targetedTab : '_self'
                 );
                 if (link.targetedTab) {
@@ -285,6 +281,7 @@ angular.module('bahmni.common.patientSearch')
                 }
             }
         };
+
         var getPatientCountSeriallyBySearchIndex = function (index) {
             if (index === $scope.search.searchTypes.length) {
                 return;
