@@ -181,9 +181,7 @@ angular.module('bahmni.clinical').controller('ConsultationController',
             };
 
             var initialize = function () {
-
                 var appExtensions = clinicalAppConfigService.getAllConsultationBoards();
-                // 1. Extract from the URL (which we know works on the dashboard)
                 var getParam = function (name) {
                     var results = new RegExp('[\?&]' + name + '=([^&#]*)').exec(window.location.href);
                     return results ? decodeURIComponent(results[1]) : null;
@@ -191,12 +189,9 @@ angular.module('bahmni.clinical').controller('ConsultationController',
 
                 var queueName = getParam('queueName');
 
-                // 2. If we found it, save it to Session Storage (lives as long as the tab is open)
                 if (queueName) {
                     sessionStorage.setItem('bahmni_current_queue', queueName);
-                    console.log("Queue saved to session storage:", queueName);
                 }
-
 
                 $scope.adtNavigationConfig = { forwardUrl: Bahmni.Clinical.Constants.adtForwardUrl, title: $translate.instant("CLINICAL_GO_TO_DASHBOARD_LABEL"), privilege: Bahmni.Clinical.Constants.adtPrivilege };
                 $scope.availableBoards = $scope.availableBoards.concat(appExtensions);
@@ -315,28 +310,22 @@ angular.module('bahmni.clinical').controller('ConsultationController',
                 if ($state.params.programUuid) {
                     queryParams.push("programUuid=" + $state.params.programUuid);
                 }
-
                 if ($state.params.enrollment) {
                     queryParams.push("enrollment=" + $state.params.enrollment);
                 }
-
                 if ($state.params.dateEnrolled) {
                     queryParams.push("dateEnrolled=" + $state.params.dateEnrolled);
                 }
-
                 if ($state.params.dateCompleted) {
                     queryParams.push("dateCompleted=" + $state.params.dateCompleted);
                 }
-
                 var extensionParams = board.extensionParams;
                 angular.forEach(extensionParams, function (extensionParamValue, extensionParamKey) {
                     queryParams.push(extensionParamKey + "=" + extensionParamValue);
                 });
-
                 if (!_.isEmpty(queryParams)) {
                     url = url + "?" + queryParams.join("&");
                 }
-
                 $scope.lastConsultationTabUrl.url = url;
                 return $location.url(url);
             };
@@ -355,7 +344,6 @@ angular.module('bahmni.clinical').controller('ConsultationController',
                 if ($scope.lastConsultationTabUrl.url) {
                     $location.url($scope.lastConsultationTabUrl.url);
                 } else {
-                    // Default tab
                     getUrl($scope.availableBoards[0]);
                 }
             };
@@ -372,12 +360,10 @@ angular.module('bahmni.clinical').controller('ConsultationController',
                     $scope.$parent.$broadcast("event:errorsOnForm");
                     return;
                 }
-
                 contextChangeHandler.reset();
                 _.map($scope.availableBoards, function (availableBoard) {
                     availableBoard.isSelectedTab = false;
                 });
-
                 $scope.currentBoard = board;
                 $scope.currentBoard.isSelectedTab = true;
                 return getUrl(board);
@@ -543,22 +529,20 @@ angular.module('bahmni.clinical').controller('ConsultationController',
                     }
 
                     if (alerts && alerts.length > 0) {
-                        var cdssAlerts = alerts.map(
-                            function (cdssAlert) {
-                                cdssAlert.isActive = false;
-                                return cdssAlert;
-                            }
-                        );
+                        var cdssAlerts = alerts.map(function (cdssAlert) {
+                            cdssAlert.isActive = false;
+                            return cdssAlert;
+                        });
                         $rootScope.cdssAlerts = cdssAlerts;
                     }
                     preSaveEvents();
                     return spinner.forPromise($q.all([preSavePromise(),
-                    encounterService.getEncounterType($state.params.programUuid, sessionService.getLoginLocationUuid())]).then(function (results) {
-                        var encounterData = results[0];
-                        encounterData.encounterTypeUuid = results[1].uuid;
-                        var params = angular.copy($state.params);
-                        params.cachebuster = Math.random();
-                        return encounterService.create(encounterData)
+                        encounterService.getEncounterType($state.params.programUuid, sessionService.getLoginLocationUuid())]).then(function (results) {
+                            var encounterData = results[0];
+                            encounterData.encounterTypeUuid = results[1].uuid;
+                            var params = angular.copy($state.params);
+                            params.cachebuster = Math.random();
+                            return encounterService.create(encounterData)
                             .then(function (saveResponse) {
                                 $state.dirtyConsultationForm = false;
                                 $state.orderRemoved = false;
@@ -589,8 +573,7 @@ angular.module('bahmni.clinical').controller('ConsultationController',
                                             }
                                             return $state.transitionTo(toStateConfig ? toStateConfig.toState : $state.current, toStateConfig ? toStateConfig.toParams : params, {
                                                 inherit: false,
-                                                notify: true,
-                                                reload: (toStateConfig !== undefined)
+                                                notify: true, reload: (toStateConfig !== undefined)
                                             });
                                         }).then(function () {
                                             $rootScope.$broadcast('event:save-successful');
@@ -600,7 +583,7 @@ angular.module('bahmni.clinical').controller('ConsultationController',
                                 var message = Bahmni.Clinical.Error.translate(error) || "{{'CLINICAL_SAVE_FAILURE_MESSAGE_KEY' | translate}}";
                                 messagingService.showMessage('error', message);
                             });
-                    }));
+                        }));
                 } catch (error) {
                     var displayErrors = function (error) {
                         if (angular.isArray(error)) {
@@ -611,13 +594,9 @@ angular.module('bahmni.clinical').controller('ConsultationController',
                             messagingService.showMessage('error', error.message || '[ERROR]');
                         }
                     };
-                    return spinner.forPromise(Promise.resolve(displayErrors(error)));
+                    displayErrors(error);
                 }
             };
-
-            $scope.$on("patientContext:goToPatientDashboard", function () {
-                $scope.gotoPatientDashboard();
-            });
-
             initialize();
         }]);
+
