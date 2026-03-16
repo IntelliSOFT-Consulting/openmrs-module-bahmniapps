@@ -54,104 +54,106 @@ angular.module('bahmni.clinical')
                 var currentQueue = sessionStorage.getItem('bahmni_current_queue');
                 var queueUpper = currentQueue ? currentQueue.toUpperCase() : "";
 
-                // --- DYNAMIC FILTER LOGIC ---
                 if (queueUpper === "EMERGENCY") {
                     $scope.allTemplates = _.filter($scope.allTemplates, function (template) {
                         var name = template.label || template.formName;
-                        return name === "Emergency" || name === "Patient Assignment Queue";
+                        return name === "Emergency" ||
+                            name === "Patient Assignment Queue";
                     });
                 } else if (queueUpper === "OPDONE" || queueUpper === "OPDTWO") {
                     $scope.allTemplates = _.filter($scope.allTemplates, function (template) {
                         var name = template.label || template.formName;
-                        return name === "Comprehensive Ophthalmic Examinations" ||
-                            name === "Opthalmologist Consultation" || name === "Tear Film Evaluation" ||
-                            name === "Tests of Ocular Moility and Binocular Vision" || name === "Ptosis Evaluation" ||
-                            name === "Special Ophthalmic Examination" || name === "Patient Assignment Queue";
-                    });
-                } else if (queueUpper === "PHARMACY") {
-                    $scope.allTemplates = _.filter($scope.allTemplates, function (template) {
-                        var name = template.label || template.formName;
-                        return name === "Dispensing Form" || name === "Patient Assignment Queue";
-                    });
-                } else if (queueUpper === "OPTICAL") {
-                    $scope.allTemplates = _.filter($scope.allTemplates, function (template) {
-                        var name = template.label || template.formName;
-                        return name === "Optical Prescription" || name === "Patient Assignment Queue";
-                    });
-                } else if (queueUpper === "LAB") {
-                    $scope.allTemplates = _.filter($scope.allTemplates, function (template) {
-                        var name = template.label || template.formName;
-                        return name === "Lab Results Entry" || name === "Patient Assignment Queue";
-                    });
-                } else if (queueUpper === "MINOR_OR") {
-                    $scope.allTemplates = _.filter($scope.allTemplates, function (template) {
-                        var name = template.label || template.formName;
-                        return name === "Patient Assignment Queue";
-                    });
-                } else if (queueUpper === "MAJOR_OR") {
-                    $scope.allTemplates = _.filter($scope.allTemplates, function (template) {
-                        var name = template.label || template.formName;
-                        return name === "Patient Assignment Queue";
-                    });
-                } else if (queueUpper === "COUNSELLING") {
-                    $scope.allTemplates = _.filter($scope.allTemplates, function (template) {
-                        var name = template.label || template.formName;
-                        return name === "Pre Operative Record (Cataract Surgery)" || name === "Counselling Form" ||
-                            name === "Ophthalmic Investigation Counseling Checklist" || name === "Surgical Counselling Checklist" ||
-                            name === "Patient Assignment Queue";
-                    });
-                } else if (queueUpper === "DIAGNOSTIC") {
-                    $scope.allTemplates = _.filter($scope.allTemplates, function (template) {
-                        var name = template.label || template.formName;
-                        return name === "Color Vision Test" || name === "Amsler Grid Test" ||
-                            name === "Ophthalmic Investigation Counseling Checklist" || name === "Special Ophthalmic Investigation" ||
+                        return name === "Amsler Grid Test" ||
+                            name === "Cataract Surgery First Day Postoperative Followup" ||
+                            name === "Cataract Surgery One Month Follow Up" ||
+                            name === "Cataract Surgery One Week Follow Up" ||
+                            name === "Cataract Surgery Refraction Record" ||
+                            name === "Color Vision Test" ||
+                            name === "Comprehensive Ophthalmic Examinations" ||
+                            name === "OPD Procedure Note" ||
+                            name === "Pre Operative Record (Cataract Surgery)" ||
+                            name === "Preliminary Surgery Tests" ||
+                            name === "Proptosis Evaluation" ||
+                            name === "Ptosis Evaluation" ||
+                            name === "Tear Film Evaluation" ||
+                            name === "Tests of Ocular Moility and Binocular Vision" ||
                             name === "Patient Assignment Queue";
                     });
                 } else if (queueUpper === "OPHTHALMOLOGY") {
                     $scope.allTemplates = _.filter($scope.allTemplates, function (template) {
                         var name = template.label || template.formName;
-                        return name === "Opthalmologist Consultation" || name === "Preliminary Surgery Tests" || name === "Proptosis Evaluation" ||
+                        return name === "Opthalmologist Consultation" ||
+                            name === "Gonioscopy Evaluation" ||
+                            name === "Laser Procedure Note" ||
+                            name === "OPD Procedure Note" ||
+                            name === "Pre Operative Record (Cataract Surgery)" ||
+                            name === "Preliminary Surgery Tests" ||
+                            name === "Proptosis Evaluation" ||
+                            name === "Ptosis Evaluation" ||
                             name === "Patient Assignment Queue";
                     });
-                } else if (queueUpper === "MEDICAL_BOARD") {
+                } else if (queueUpper === "DIAGNOSTIC") {
                     $scope.allTemplates = _.filter($scope.allTemplates, function (template) {
                         var name = template.label || template.formName;
-                        return name === "Medical Board Review Form" || name === "Patient Assignment Queue";
+                        return name === "Ophthalmic Investigation Counseling Checklist" ||
+                            name === "Special Ophthalmic Examination" ||
+                            name === "Special Ophthalmic Investigation" ||
+                            name === "Color Vision Test" ||
+                            name === "Amsler Grid Test" ||
+                            name === "Patient Assignment Queue";
                     });
-                } else if (queueUpper === "IPD") {
+                } else if (queueUpper === "COUNSELLING") {
                     $scope.allTemplates = _.filter($scope.allTemplates, function (template) {
                         var name = template.label || template.formName;
-                        return name === "Surgery Inpatient Form" || name === "Nursing Assessment" || name === "Patient Assignment Queue";
+                        return name === "Counselling Form" ||
+                            name === "Counselling Checklist" ||
+                            name === "Surgical Counselling Checklist" ||
+                            name === "Ophthalmic Investigation Counseling Checklist" ||
+                            name === "Patient Assignment Queue";
                     });
-                } else if (queueUpper === "FOLLOWUP") {
+                } else if (queueUpper === "MINOR_OR") {
                     $scope.allTemplates = _.filter($scope.allTemplates, function (template) {
                         var name = template.label || template.formName;
-                        return name === "Cataract Surgery One Month Follow Up" || name === "Cataract Surgery One Week Follow Up" || name === "Patient Assignment Queue";
+                        return name === "Minor Operation Note" ||
+                            name === "Patient Assignment Queue";
                     });
-                } else if (queueUpper === "LIAISON") {
+                } else if (queueUpper === "MAJOR_OR" || queueUpper === "OT") {
                     $scope.allTemplates = _.filter($scope.allTemplates, function (template) {
                         var name = template.label || template.formName;
-                        return name === "Liaison Office Record" || name === "Patient Assignment Queue";
+                        return name === "Before Anesthesia" ||
+                            name === "Before Surgery Checklist" ||
+                            name === "Cataract Surgery Operating Theatre" ||
+                            name === "Cataract Surgery" ||
+                            name === "Surgery Preparation Checklist" ||
+                            name === "Surgical Operating Room After Incision Checklist" ||
+                            name === "Surgical Preop Checklist" ||
+                            name === "Surgical Block Room Checklist After Anesthesia" ||
+                            name === "Surgical Incision Checklist" ||
+                            name === "Surgical Post Operative Checklist" ||
+                            name === "Preanaesthesia Form" ||
+                            name === "Patient Assignment Queue";
                     });
-                } else if (queueUpper === "DISCHARGE") {
+                } else if (queueUpper === "IPD" || queueUpper === "INPATIENT") {
                     $scope.allTemplates = _.filter($scope.allTemplates, function (template) {
                         var name = template.label || template.formName;
-                        return name === "Discharge Summary" || name === "Patient Assignment Queue";
-                    });
-                } else if (queueUpper === "OT") {
-                    $scope.allTemplates = _.filter($scope.allTemplates, function (template) {
-                        var name = template.label || template.formName;
-                        return name === "Before Anesthesia" || name === "Before Surgery Checklist" ||
-                            name === "Cataract Surgery" || name === "Cataract Surgery Operating Theatre" || name === "Surgery Preparation Checklist" ||
-                            name === "Surgical Incision Checklist" || name === "Surgical Preop Checklist" || name === "Surgical Block Room Checklist After Anesthesia" ||
-                            name === "Surgical Post Operative Checklist" || name === "Patient Assignment Queue";
+                        return name === "Cataract Surgery Inpatient Form" ||
+                            name === "Cataract Surgery Progress Sheet" ||
+                            name === "Surgery Inpatient Form" ||
+                            name === "Patient Assignment Queue";
                     });
                 } else if (queueUpper === "CATARACT") {
                     $scope.allTemplates = _.filter($scope.allTemplates, function (template) {
                         var name = template.label || template.formName;
-                        return name === "Cataract Surgery Inpatient Form" ||
-                            name === "Cataract Surgery One Month Follow Up" || name === "Cataract Surgery One Week Follow Up" || name === "Cataract Surgery Progress Sheet" ||
-                            name === "Cataract Surgery Refraction Record" || name === "Cataract Surgery First Day Postoperative Followup" || name === "Patient Assignment Queue";
+                        return name === "Pre Operative Record (Cataract Surgery)" ||
+                            name === "Cataract Surgery Operating Theatre" ||
+                            name === "Cataract Surgery" ||
+                            name === "Cataract Surgery Inpatient Form" ||
+                            name === "Cataract Surgery Progress Sheet" ||
+                            name === "Cataract Surgery First Day Postoperative Followup" ||
+                            name === "Cataract Surgery One Week Follow Up" ||
+                            name === "Cataract Surgery One Month Follow Up" ||
+                            name === "Cataract Surgery Refraction Record" ||
+                            name === "Patient Assignment Queue";
                     });
                 }
 
