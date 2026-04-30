@@ -3,10 +3,10 @@
 angular.module('bahmni.clinical')
     .controller('AddTreatmentController', ['$scope', '$rootScope', 'contextChangeHandler', 'treatmentConfig', 'drugService',
         '$timeout', 'clinicalAppConfigService', 'ngDialog', '$window', 'messagingService', 'appService', 'activeDrugOrders',
-        'orderSetService', '$q', 'locationService', 'spinner', '$translate', '$state', 'cdssService', 'observationsService', 'diagnosisService', 'visitService',
+        'orderSetService', '$q', 'locationService', 'spinner', '$translate', '$state', 'cdssService', 'observationsService', 'diagnosisService', 'visitService', 'stockService',
         function ($scope, $rootScope, contextChangeHandler, treatmentConfig, drugService, $timeout,
             clinicalAppConfigService, ngDialog, $window, messagingService, appService, activeDrugOrders,
-            orderSetService, $q, locationService, spinner, $translate, $state, cdssService, observationsService, diagnosisService, visitService) {
+            orderSetService, $q, locationService, spinner, $translate, $state, cdssService, observationsService, diagnosisService, visitService, stockService) {
             var DateUtil = Bahmni.Common.Util.DateUtil;
             var DrugOrderViewModel = Bahmni.Clinical.DrugOrderViewModel;
             var scrollTop = _.partial($window.scrollTo, 0, 0);
@@ -54,12 +54,18 @@ angular.module('bahmni.clinical')
             }
             if (treatmentConfig.isAutoCompleteForAllConcepts()) {
                 $scope.getDrugs = function (request) {
-                    return drugService.search(request.term);
+                    return drugService.search(request.term).then(function (drugs) {
+                        stockService.prefetch(drugs);
+                        return drugs;
+                    });
                 };
             }
             if (treatmentConfig.isAutoCompleteForGivenConceptSet()) {
                 $scope.getDrugs = function (request) {
-                    return drugService.getSetMembersOfConcept(treatmentConfig.getDrugConceptSet(), request.term);
+                    return drugService.getSetMembersOfConcept(treatmentConfig.getDrugConceptSet(), request.term).then(function (drugs) {
+                        stockService.prefetch(drugs);
+                        return drugs;
+                    });
                 };
             }
 
@@ -608,7 +614,11 @@ angular.module('bahmni.clinical')
                 var listOfDrugSynonyms = _.map(drugs, function (drug) {
                     return Bahmni.Clinical.DrugSearchResult.getAllMatchingSynonyms(drug, searchString);
                 });
-                return _.flatten(listOfDrugSynonyms);
+                var results = _.flatten(listOfDrugSynonyms);
+                results.forEach(function (result) {
+                    result.stockHtml = stockService.getStockHtmlForDrug(result.drug);
+                });
+                return results;
             };
 
             (function () {

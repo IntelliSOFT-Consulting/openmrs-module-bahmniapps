@@ -1,8 +1,8 @@
 'use strict';
 
 angular.module('bahmni.adt')
-    .controller('WardLayoutController', ['$scope', '$rootScope', '$window', 'spinner', 'wardService', 'bedManagementService', 'bedService', 'messagingService', 'appService', '$document', '$element',
-        function ($scope, $rootScope, $window, spinner, wardService, bedManagementService, bedService, messagingService, appService, $document, $element) {
+    .controller('WardLayoutController', ['$scope', '$rootScope', '$window', '$q', 'spinner', 'wardService', 'bedManagementService', 'bedService', 'bedOrderService', 'messagingService', 'appService', '$document', '$element',
+        function ($scope, $rootScope, $window, $q, spinner, wardService, bedManagementService, bedService, bedOrderService, messagingService, appService, $document, $element) {
             $scope.selectedBed = null;
             var maxPatientsConfig = appService.getAppDescriptor().getConfig("maxPatientsPerBed");
             var maxPatientsPerBed = maxPatientsConfig ? maxPatientsConfig.value : 3;
@@ -52,13 +52,62 @@ angular.module('bahmni.adt')
                 $element.find('.bed-info').hide();
             };
 
+            var buildBedOrderPayload = function (bed) {
+                return {
+                    patientUuid:   $scope.patientUuid,
+                    visitUuid:     $scope.visitUuid,
+                    bedId:         String(bed.bed.bedId),
+                    bedNumber:     bed.bed.bedNumber,
+                    wardName:      $scope.ward.ward.name,
+                    amount:        null,
+                    currency:      'KES',
+                    paymentMethod: 'paying',
+                    modeOfPayment: null
+                };
+            };
+
+            var doAssignBed = function (bed, encUuid) {
+                spinner.forPromise(
+                    bedService.assignBed(bed.bed.bedId, $scope.patientUuid, encUuid).success(function () {
+                        $rootScope.bed = bed.bed;
+                        bedService.setBedDetailsForPatientOnRootScope($scope.patientUuid);
+                        messagingService.showMessage('info', "Bed " + bed.bed.bedNumber + " is assigned successfully");
+                        $element.find('.bed-info').hide();
+                    })
+                );
+            };
+
             var assignBedToPatient = function (bed, encUuid) {
-                spinner.forPromise(bedService.assignBed(bed.bed.bedId, $scope.patientUuid, encUuid).success(function () {
-                    $rootScope.bed = bed.bed;
-                    bedService.setBedDetailsForPatientOnRootScope($scope.patientUuid);
-                    messagingService.showMessage('info', "Bed " + bed.bed.bedNumber + " is assigned successfully");
-                    $element.find('.bed-info').hide();
-                }));
+                var payload = buildBedOrderPayload(bed);
+
+                console.log('[BedOrder] Posting bed order:', payload);
+
+                spinner.forPromise(
+                    bedOrderService.postBedOrder(payload)
+                        .then(function (orderResponse) {
+                            console.log('[BedOrder] Bed order accepted by OpenMRS module:', orderResponse.data);
+
+                            return bedOrderService.getPaymentStatus($scope.patientUuid, payload.bedId);
+                        })
+                        .then(function (statusResponse) {
+                            var status = statusResponse.data;
+                            console.log('[BedOrder] Payment status from OpenMRS module:', status);
+
+                            if (status && status.paid === true) {
+                                console.log('[BedOrder] Payment confirmed — assigning bed.');
+                                doAssignBed(bed, encUuid);
+                            } else {
+                                messagingService.showMessage('error',
+                                    'Patient cannot be admitted. Bed payment is pending. ' +
+                                    'Please complete payment at the billing desk.');
+                            }
+                        })
+                        .catch(function (error) {
+                            console.error('[BedOrder] Error communicating with billing module:', error);
+                            messagingService.showMessage('error',
+                                'Billing system unavailable. Contact support.');
+                        })
+                );
             };
 
             $scope.getCurrentBed = function () {
