@@ -63,6 +63,16 @@ angular.module('bahmni.common.uiHelper')
                 }
             }
         });
+
+        element.data('ui-autocomplete')._renderItem = function (ul, item) {
+            var $li = $('<li>');
+            if (item.stockHtml) {
+                $li.append($('<a>').html(item.label + '&nbsp;' + item.stockHtml));
+            } else {
+                $li.append($('<a>').text(item.label));
+            }
+            return $li.appendTo(ul);
+        };
         var changeHanlder = function (e) {
             validateIfNeeded(element.val());
         };

@@ -2,8 +2,8 @@
 
 angular.module('bahmni.registration')
     .controller('VisitController', ['$window', '$scope', '$rootScope', '$state', '$bahmniCookieStore', 'patientService', 'encounterService', '$stateParams', 'spinner', '$timeout', '$q', 'appService', 'openmrsPatientMapper', 'contextChangeHandler', 'messagingService', 'sessionService', 'visitService', '$location', '$translate',
-        'auditLogService', 'formService',
-        function ($window, $scope, $rootScope, $state, $bahmniCookieStore, patientService, encounterService, $stateParams, spinner, $timeout, $q, appService, openmrsPatientMapper, contextChangeHandler, messagingService, sessionService, visitService, $location, $translate, auditLogService, formService) {
+        'auditLogService', 'formService', 'consultationFeeService',
+        function ($window, $scope, $rootScope, $state, $bahmniCookieStore, patientService, encounterService, $stateParams, spinner, $timeout, $q, appService, openmrsPatientMapper, contextChangeHandler, messagingService, sessionService, visitService, $location, $translate, auditLogService, formService, consultationFeeService) {
             var vm = this;
             var patientUuid = $stateParams.patientUuid;
             var extensions = appService.getAppDescriptor().getExtensions("org.bahmni.registration.conceptSetGroup.observations", "config");
@@ -73,6 +73,43 @@ angular.module('bahmni.registration')
                 return updateImagePromise;
             };
 
+            var findObsByConceptName = function (observations, name) {
+                for (var i = 0; i < (observations || []).length; i++) {
+                    var obs = observations[i];
+                    if (obs.concept && obs.concept.name === name) {
+                        return obs;
+                    }
+                    if (obs.groupMembers) {
+                        var found = findObsByConceptName(obs.groupMembers, name);
+                        if (found) { return found; }
+                    }
+                }
+                return null;
+            };
+
+            var submitFeeToOdoo = function (observations) {
+                var feeObs = findObsByConceptName(observations, 'Consultation Fee');
+                var fee = feeObs ? feeObs.value : null;
+                var visitUuid = vm.visitUuid;
+                var patientUuid = $scope.patient && $scope.patient.uuid;
+
+                console.log('[ConsultationFee] Preparing to sync — patientUuid:', patientUuid, 'visitUuid:', visitUuid, 'fee:', fee);
+
+                if (!fee || !patientUuid) {
+                    console.log('[ConsultationFee] Skipped — no fee value or patient UUID found.');
+                    return;
+                }
+
+                consultationFeeService.postFee(patientUuid, visitUuid, fee)
+                    .then(function (response) {
+                        console.log('[ConsultationFee] Synced to Odoo connector successfully:', response.data);
+                    })
+                    .catch(function (error) {
+                        console.warn('[ConsultationFee] Sync failed (non-blocking):', error);
+                        messagingService.showMessage('warn', 'Consultation fee could not be synced to billing — please inform the billing desk.');
+                    });
+            };
+
             var save = function () {
                 $scope.encounter = {
                     patientUuid: $scope.patient.uuid,
@@ -93,11 +130,14 @@ angular.module('bahmni.registration')
 
                 addFormObservations($scope.encounter.observations);
 
+                var observationsForFee = $scope.encounter.observations.slice();
+
                 var createPromise = encounterService.create($scope.encounter);
                 spinner.forPromise(createPromise);
                 return createPromise.then(function (response) {
                     var messageParams = {encounterUuid: response.data.encounterUuid, encounterType: response.data.encounterType};
                     auditLogService.log(patientUuid, 'EDIT_ENCOUNTER', messageParams, 'MODULE_LABEL_REGISTRATION_KEY');
+                    submitFeeToOdoo(observationsForFee);
                     var visitType, visitTypeUuid;
                     visitTypeUuid = response.data.visitTypeUuid;
                     visitService.getVisitType().then(function (response) {
