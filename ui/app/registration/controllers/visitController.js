@@ -165,7 +165,7 @@ angular.module('bahmni.registration')
                     patient: patientUuid, includeInactive: false, v: "custom:(uuid,location:(uuid))"
                 }).then(function (response) {
                     var results = response.data.results;
-                    var activeVisitForCurrentLoginLocation;
+                    var activeVisitForCurrentLoginLocation = [];
                     if (results) {
                         activeVisitForCurrentLoginLocation = _.filter(results, function (result) {
                             return result.location.uuid === visitLocationUuid;
