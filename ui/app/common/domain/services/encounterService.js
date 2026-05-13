@@ -186,8 +186,8 @@ angular.module("bahmni.common.domain").service("encounterService", [
             var control = null;
             for (var i = 0; i < data.controls.length; i++) {
                 var group = data.controls[i];
-                for (var j = 0; j < group.controls.length; j++) {
-                    if (group.controls[j].concept.name.indexOf("ICD 11 Diagnosis") !== -1) {
+                for (var j = 0; j < (group.controls || []).length; j++) {
+                    if (group.controls[j].concept && group.controls[j].concept.name.indexOf("ICD 11 Diagnosis") !== -1) {
                         control = group;
                         break;
                     }
@@ -238,6 +238,7 @@ angular.module("bahmni.common.domain").service("encounterService", [
                         return parseForm(res.data);
                     });
                 }
+                return [];
             });
         }
 
