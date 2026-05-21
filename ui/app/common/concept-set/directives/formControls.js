@@ -9,6 +9,317 @@ angular.module("bahmni.common.conceptSet").directive("formControls", [
         var loadedFormDetails = {};
         var loadedFormTranslations = {};
 
+        var PG_TABLE_FORMS = {
+            "Comprehensive Ophthalmic Examinations": "section",
+            "Cataract Surgery Refraction Record": "flat"
+        };
+
+        function isRefractionRecordSectionLabel (text) {
+            return text && text.trim().toLowerCase() === "refraction record";
+        }
+
+        var PG_TABLE_CELL_EYES = {
+            DV: { RE: "Right Eye PG DV", LE: "Left Eye PG DV" },
+            NV: { RE: "Right Eye PG NV", LE: "Left Eye PG NV" }
+        };
+
+        var PG_TABLE_FIELD_TYPES = {
+            spherical: "Spherical",
+            cylinder: "Cylinder",
+            axis: "Axis",
+            va: "V/A with PG"
+        };
+
+        var PG_TABLE_DEBUG = false;
+
+        function buildPGLabelLookupMap () {
+            var targets = [];
+            var distanceLabels = [
+                ["spherical", "RE"], ["spherical", "LE"], ["cylinder", "RE"], ["cylinder", "LE"], ["axis", "RE"], ["axis", "LE"]
+            ];
+            var nearLabels = [
+                ["spherical", "RE"], ["spherical", "LE"], ["cylinder", "RE"], ["cylinder", "LE"], ["axis", "RE"], ["axis", "LE"],
+                ["va", "RE"], ["va", "LE"]
+            ];
+            distanceLabels.forEach(function (entry) {
+                targets.push({ field: entry[0], eyeSide: entry[1], powerType: "DV" });
+            });
+            nearLabels.forEach(function (entry) {
+                targets.push({ field: entry[0], eyeSide: entry[1], powerType: "NV" });
+            });
+
+            var map = {};
+            var fieldLabelNames = {
+                spherical: "spherical",
+                cylinder: "cylinder",
+                axis: "axis",
+                va: "v/a with pg"
+            };
+            var eyeLabelNames = { RE: "right eye", LE: "left eye" };
+            var distanceSuffixes = [
+                "pg distance rx",
+                "pg dv distance rx",
+                "pg dv",
+                "pg distance"
+            ];
+            var nearSuffixes = [
+                "pg near rx",
+                "pg nv near rx",
+                "pg nv",
+                "pg near"
+            ];
+
+            targets.forEach(function (target) {
+                var fieldName = fieldLabelNames[target.field];
+                var eyeName = eyeLabelNames[target.eyeSide];
+                var suffixes = target.powerType === "DV" ? distanceSuffixes : nearSuffixes;
+                suffixes.forEach(function (suffix) {
+                    if (target.field === "va") {
+                        map[getPGLabelLookupKey("V/A with PG, " + eyeName + " " + suffix)] = target;
+                        map[getPGLabelLookupKey("V/A with PG, " + eyeName + " PG Near Rx")] = target;
+                    } else {
+                        map[getPGLabelLookupKey(fieldName + ", " + eyeName + " " + suffix)] = target;
+                    }
+                });
+            });
+            return map;
+        }
+
+        var PG_NORMALIZED_LABEL_MAP = buildPGLabelLookupMap();
+
+        function registerPGLabelTarget (map, label, powerType, eyeSide, field) {
+            map[getPGLabelLookupKey(label)] = {
+                powerType: powerType,
+                eyeSide: eyeSide,
+                field: field
+            };
+        }
+
+        function buildCataractPGExactLabelMap () {
+            var map = {};
+            var cataractLabels = [
+                ["Spherical, Right Eye PG DV Distance Rx", "DV", "RE", "spherical"],
+                ["Spherical, Left Eye PG DV Distance Rx", "DV", "LE", "spherical"],
+                ["Cylinder, Right Eye PG DV Distance Rx", "DV", "RE", "cylinder"],
+                ["Cylinder, Left Eye PG DV Distance Rx", "DV", "LE", "cylinder"],
+                ["Axis, Right Eye PG DV Distance Rx", "DV", "RE", "axis"],
+                ["Axis, Left Eye PG DV Distance Rx", "DV", "LE", "axis"],
+                ["Spherical, Right Eye PG NV Near Rx", "NV", "RE", "spherical"],
+                ["Spherical, Left Eye PG NV Near Rx", "NV", "LE", "spherical"],
+                ["Cylinder, Right Eye PG NV Near Rx", "NV", "RE", "cylinder"],
+                ["Cylinder, Left Eye PG NV Near Rx", "NV", "LE", "cylinder"],
+                ["Axis, Right Eye PG NV Near Rx", "NV", "RE", "axis"],
+                ["Axis, Left Eye PG NV Near Rx", "NV", "LE", "axis"],
+                ["V/A with PG, Right Eye PG Near Rx", "NV", "RE", "va"],
+                ["V/A with PG, Left Eye PG Near Rx", "NV", "LE", "va"],
+                ["Spherical, Right Eye PG Distance Rx", "DV", "RE", "spherical"],
+                ["Spherical, Left Eye PG Distance Rx", "DV", "LE", "spherical"],
+                ["Cylinder, Right Eye PG Distance Rx", "DV", "RE", "cylinder"],
+                ["Cylinder, Left Eye PG Distance Rx", "DV", "LE", "cylinder"],
+                ["Axis, Right Eye PG Distance Rx", "DV", "RE", "axis"],
+                ["Axis, Left Eye PG Distance Rx", "DV", "LE", "axis"],
+                ["Spherical, Right Eye PG Near Rx", "NV", "RE", "spherical"],
+                ["Spherical, Left Eye PG Near Rx", "NV", "LE", "spherical"],
+                ["Cylinder, Right Eye PG Near Rx", "NV", "RE", "cylinder"],
+                ["Cylinder, Left Eye PG Near Rx", "NV", "LE", "cylinder"],
+                ["Axis, Right Eye PG Near Rx", "NV", "RE", "axis"],
+                ["Axis, Left Eye PG Near Rx", "NV", "LE", "axis"],
+                ["V/A with PG, Right Eye PG NV Near Rx", "NV", "RE", "va"],
+                ["V/A with PG, Left Eye PG NV Near Rx", "NV", "LE", "va"]
+            ];
+            cataractLabels.forEach(function (entry) {
+                registerPGLabelTarget(map, entry[0], entry[1], entry[2], entry[3]);
+            });
+            return map;
+        }
+
+        var CATARACT_PG_EXACT_LABEL_MAP = buildCataractPGExactLabelMap();
+
+        function normalizePGLabelText (labelText) {
+            if (!labelText) {
+                return "";
+            }
+            return labelText.trim()
+                .replace(/\s*\([^)]*\)\s*$/g, "")
+                .replace(/\s*\*+\s*/g, " ")
+                .replace(/\s+/g, " ")
+                .trim();
+        }
+
+        function getPGLabelLookupKey (labelText) {
+            return normalizePGLabelText(labelText).toLowerCase().replace(/,/g, "").replace(/\s+/g, " ").trim();
+        }
+
+        function getPGFieldTarget (labelText) {
+            var lookupKey = getPGLabelLookupKey(labelText);
+            if (CATARACT_PG_EXACT_LABEL_MAP[lookupKey]) {
+                return CATARACT_PG_EXACT_LABEL_MAP[lookupKey];
+            }
+            if (PG_NORMALIZED_LABEL_MAP[lookupKey]) {
+                return PG_NORMALIZED_LABEL_MAP[lookupKey];
+            }
+
+            var text = lookupKey;
+            if (!text) {
+                return null;
+            }
+
+            var field = null;
+            if (text.indexOf("v/a with pg") !== -1 || text.indexOf("v/a") === 0) {
+                field = "va";
+            } else if (text.indexOf("spherical") !== -1) {
+                field = "spherical";
+            } else if (text.indexOf("cylinder") !== -1) {
+                field = "cylinder";
+            } else if (text.indexOf("axis") !== -1) {
+                field = "axis";
+            } else {
+                return null;
+            }
+
+            var eyeSide = null;
+            if (text.indexOf("right eye") !== -1) {
+                eyeSide = "RE";
+            } else if (text.indexOf("left eye") !== -1) {
+                eyeSide = "LE";
+            } else {
+                return null;
+            }
+
+            var powerType = null;
+            if (/\bpg\s*dv\s*distance\s*rx\b/.test(text) || /\bpg\s*distance\s*rx\b/.test(text) ||
+                /\bpg\s*dv\b/.test(text) || /\bpg\s*distance\b/.test(text) ||
+                (/\bdistance\s*rx\b/.test(text) && !/\bnear\s*rx\b/.test(text))) {
+                powerType = "DV";
+            } else if (/\bpg\s*nv\s*near\s*rx\b/.test(text) || /\bpg\s*near\s*rx\b/.test(text) ||
+                /\bpg\s*nv\b/.test(text) || /\bpg\s*near\b/.test(text)) {
+                powerType = "NV";
+            }
+            if (!powerType) {
+                return null;
+            }
+
+            return { powerType: powerType, eyeSide: eyeSide, field: field };
+        }
+
+        function getPGCellAttributes (target) {
+            if (!target) {
+                return null;
+            }
+            var eye = PG_TABLE_CELL_EYES[target.powerType][target.eyeSide];
+            var type = PG_TABLE_FIELD_TYPES[target.field];
+            if (!eye || !type) {
+                return null;
+            }
+            return { eye: eye, type: type };
+        }
+
+        function parsePGObsLabel (labelText) {
+            return getPGCellAttributes(getPGFieldTarget(labelText));
+        }
+
+        function findPGTableCell (table, eye, type) {
+            var cells = table.getElementsByClassName("input-cell");
+            for (var i = 0; i < cells.length; i++) {
+                if (cells[i].getAttribute("data-eye") === eye && cells[i].getAttribute("data-type") === type) {
+                    return cells[i];
+                }
+            }
+            return null;
+        }
+
+        function logPGTableMapping (labelText, target, matched, detail) {
+            if (PG_TABLE_DEBUG) {
+                console.log("[PG table mapping]", {
+                    labelText: labelText,
+                    target: target,
+                    matched: matched,
+                    detail: detail
+                });
+            }
+        }
+
+        function findPGTableContainers (formName, formUuid) {
+            var mode = PG_TABLE_FORMS[formName];
+            if (!mode) {
+                return [];
+            }
+
+            if (mode === "section") {
+                var containers = [];
+                var columns = document.querySelectorAll(".form-builder-column");
+                for (var i = 0; i < columns.length; i++) {
+                    var sectionLabels = columns[i].getElementsByClassName("test-section-label");
+                    for (var j = 0; j < sectionLabels.length; j++) {
+                        if (isRefractionRecordSectionLabel(sectionLabels[j].textContent)) {
+                            var obsGroup = columns[i].getElementsByClassName("obsGroup-controls")[0];
+                            if (obsGroup) {
+                                containers.push(obsGroup);
+                            }
+                            break;
+                        }
+                    }
+                }
+                return containers;
+            }
+
+            if (mode === "flat") {
+                var formRoot = document.getElementById(formUuid);
+                if (!formRoot) {
+                    return [];
+                }
+                var pdHeaders = formRoot.querySelectorAll(".table-header.test-table-label");
+                for (var k = 0; k < pdHeaders.length; k++) {
+                    if (pdHeaders[k].textContent.trim().toUpperCase() === "PD") {
+                        return [formRoot];
+                    }
+                }
+            }
+            return [];
+        }
+
+        function findFirstPGFieldRow (container) {
+            var rows = container.getElementsByClassName("form-builder-row");
+            for (var i = 0; i < rows.length; i++) {
+                var label = rows[i].querySelector("label");
+                if (label && parsePGObsLabel(label.textContent)) {
+                    return rows[i];
+                }
+            }
+            return null;
+        }
+
+        function removeExistingPGTableWrappers (container) {
+            if (!container) {
+                return;
+            }
+            var wrappers = container.querySelectorAll(".pg-table-wrapper");
+            for (var i = wrappers.length - 1; i >= 0; i--) {
+                if (wrappers[i].parentNode) {
+                    wrappers[i].parentNode.removeChild(wrappers[i]);
+                }
+            }
+        }
+
+        function insertPGTableWrapper (container, tableWrapper) {
+            if (!container || !tableWrapper) {
+                return;
+            }
+
+            var anchorRow = findFirstPGFieldRow(container);
+            if (anchorRow && anchorRow.parentNode) {
+                var insertParent = anchorRow.parentNode;
+                if (!insertParent.contains(tableWrapper)) {
+                    insertParent.insertBefore(tableWrapper, anchorRow);
+                }
+                return;
+            }
+
+            if (!container.contains(tableWrapper)) {
+                container.appendChild(tableWrapper);
+            }
+        }
+
         function createPrescriptionTable () {
             var columns = document.querySelectorAll(".form-builder-column");
             var prescriptionSection = "";
@@ -128,66 +439,62 @@ angular.module("bahmni.common.conceptSet").directive("formControls", [
             });
         }
 
-        function createPGTable () {
-            var columns = document.querySelectorAll(".form-builder-column");
-            var refractionSection = "";
-            var pgObsGroup = "";
+        function createFreshPGTable () {
+            var table = document.createElement("table");
+            table.className = "pg-table";
 
-      // Find refraction record section
-            for (var i = 0; i < columns.length; i++) {
-                var strongElements = columns[i].getElementsByClassName("test-section-label");
-                for (var j = 0; j < strongElements.length; j++) {
-                    if (strongElements[j].textContent.trim() === "REFRACTION RECORD") {
-                        refractionSection = columns[i];
-                        pgObsGroup = columns[i].getElementsByClassName("obsGroup-controls")[0];
-                        break;
-                    }
+            var headerRow = document.createElement("tr");
+            var headers = ["PG Power:", "Spherical", "Cylinder", "Axis", "V/A with PG"];
+            headers.forEach(function (headerText, index) {
+                var th = document.createElement("th");
+                th.textContent = headerText;
+                if (index === 0) {
+                    th.className = "header-cell";
+                    th.colSpan = 2;
                 }
-                if (refractionSection) break;
+                headerRow.appendChild(th);
+            });
+
+            table.appendChild(headerRow);
+            table.appendChild(createRow("DV", "RE:", "Right Eye PG DV"));
+            table.appendChild(createSubRow("LE:", "Left Eye PG DV"));
+            table.appendChild(createRow("NV", "RE:Add", "Right Eye PG NV"));
+            table.appendChild(createSubRow("LE:Add", "Left Eye PG NV"));
+
+            return table;
+        }
+
+        function buildPGTableInContainer (pgContainer) {
+            if (!pgContainer) {
+                return { pgRowsFound: 0, movedCount: 0 };
             }
 
-            if (refractionSection) {
-        // Create table elements
-                var table = document.createElement("table");
-                table.className = "pg-table";
+            removeExistingPGTableWrappers(pgContainer);
 
-        // Create header row
-                var headerRow = document.createElement("tr");
-                var headers = ["PG Power:", "Spherical", "Cylinder", "Axis", "V/A with PG"];
-                headers.forEach(function (headerText, index) {
-                    var th = document.createElement("th");
-                    th.textContent = headerText;
-                    if (index === 0) {
-                        th.className = "header-cell";
-                        th.colSpan = 2;
-                    }
-                    headerRow.appendChild(th);
-                });
+            var table = createFreshPGTable();
+            var tableWrapper = document.createElement("div");
+            tableWrapper.className = "pg-table-wrapper";
+            tableWrapper.appendChild(table);
 
-        // Create DV (Distance Vision) rows
-                var dvRow1 = createRow("DV", "RE:", "Right Eye PG DV");
-                var dvRow2 = createSubRow("LE:", "Left Eye PG DV");
+            insertPGTableWrapper(pgContainer, tableWrapper);
 
-        // Create NV (Near Vision) rows
-                var nvRow1 = createRow("NV", "RE:Add", "Right Eye PG NV");
-                var nvRow2 = createSubRow("LE:Add", "Left Eye PG NV");
+            return moveInputsToCells(pgContainer, table);
+        }
 
-        // Assemble table
-                var tableWrapper = document.createElement("div");
-                tableWrapper.className = "pg-table-wrapper";
-                table.appendChild(headerRow);
-                table.appendChild(dvRow1);
-                table.appendChild(dvRow2);
-                table.appendChild(nvRow1);
-                table.appendChild(nvRow2);
-                tableWrapper.appendChild(table);
-
-        // Add table to the refraction section
-                pgObsGroup.appendChild(tableWrapper);
-
-        // Move inputs to corresponding cells
-                moveInputsToCells(pgObsGroup, table);
-            }
+        function createPGTable (formName, formUuid) {
+            var containers = findPGTableContainers(formName, formUuid);
+            containers.forEach(function (pgContainer) {
+                var moveResult = buildPGTableInContainer(pgContainer);
+                if (PG_TABLE_DEBUG) {
+                    console.log("[PG rebuild]", {
+                        formName: formName,
+                        formUuid: formUuid,
+                        container: pgContainer,
+                        pgRowsFound: moveResult.pgRowsFound,
+                        movedCount: moveResult.movedCount
+                    });
+                }
+            });
         }
 
         function createRow (mainLabel, subLabel, eyeIdentifier) {
@@ -239,94 +546,87 @@ angular.module("bahmni.common.conceptSet").directive("formControls", [
             return tr;
         }
 
+        function getObsControlInputContainer (wrapper) {
+            return wrapper.querySelector(".obs-control-field") ||
+                wrapper.querySelector(".obs-control-select-wrapper");
+        }
+
         function moveInputsToCells (section, table) {
-            var inputWrappers = section.getElementsByClassName("form-builder-row");
+            var inputWrappers = Array.prototype.slice.call(
+                section.getElementsByClassName("form-builder-row")
+            );
+            var moveOperations = [];
+            var pgRowsFound = 0;
 
-            Array.prototype.forEach.call(inputWrappers, function (wrapper) {
-                var label = wrapper.querySelector("label");
-                if (label) {
-                    var labelText = label.textContent.trim();
-                    var matches = labelText.match(/^(.*?),\s*(.*?)\s*PG\s*(DV|NV)$/);
-
-                    if (matches) {
-                        var type = matches[1].trim();
-                        var eye = matches[2].trim() + " PG " + matches[3];
-
-            // Find matching cell
-                        var cell = table.querySelector(`td[data-eye="${eye}"][data-type="${type}"]`);
-                        if (cell) {
-                            var textareaContainer = wrapper.querySelector(".obs-control-field");
-                            if (textareaContainer) {
-                                var dataEye = cell.getAttribute("data-eye");
-                                var dataType = cell.getAttribute("data-type");
-                                cell.appendChild(textareaContainer);
-                                wrapper.style.display = "none";
-
-                                var mappings = {
-                                    "Right Eye PG DV,Spherical": "Right Eye,SPH,Distance",
-                                    "Right Eye PG DV,Cylinder": "Right Eye,CYL,Distance",
-                                    "Right Eye PG DV,Axis": "Right Eye,Axis,Distance",
-                                    "Right Eye PG DV,V/A with PG": "Right Eye,V/A,Distance",
-                                    "Left Eye PG DV,Spherical": "Left Eye,SPH,Distance",
-                                    "Left Eye PG DV,Cylinder": "Left Eye,CYL,Distance",
-                                    "Left Eye PG DV,Axis": "Left Eye,Axis,Distance",
-                                    "Left Eye PG DV,V/A with PG": "Left Eye,V/A,Distance",
-                                    "Right Eye PG NV,Spherical": "Right Eye,SPH,Near",
-                                    "Right Eye PG NV,Cylinder": "Right Eye,CYL,Near",
-                                    "Right Eye PG NV,Axis": "Right Eye,Axis,Near",
-                                    "Right Eye PG NV,V/A with PG": "Right Eye,V/A,Near",
-                                    "Left Eye PG NV,Spherical": "Left Eye,SPH,Near",
-                                    "Left Eye PG NV,Cylinder": "Left Eye,CYL,Near",
-                                    "Left Eye PG NV,Axis": "Left Eye,Axis,Near",
-                                    "Left Eye PG NV,V/A with PG": "Left Eye,V/A,Near"
-                                };
-                                var textarea = textareaContainer.querySelector("textarea");
-                                var select = textareaContainer.querySelector(".Select-control");
-
-                                if (textarea) {
-                                    textarea.addEventListener("change", function () {
-                                        var key = `${dataEye},${dataType}`;
-                                        var targetCell = mappings[key];
-                                        var [eyeParam, typeParam, rowParam] = targetCell.split(",");
-                                        var targetElement = document.querySelector(
-                      `td[data-eye="${eyeParam}"][data-type="${typeParam}"][data-row="${rowParam}"]`
-                    );
-                                        if (targetElement) {
-                                            targetElement.innerText = textarea.value;
-                                        }
-                                    });
-                                }
-                                if (select) {
-                                    var childField = textareaContainer.querySelector(".obs-control-select-wrapper");
-                                    if (childField) {
-                                        childField.classList.add("w-full");
-                                    }
-                                    var observer = new MutationObserver(function (mutations) {
-                                        mutations.forEach(function (mutation) {
-                                            if (mutation.type === "childList") {
-                                                var valueField = select.querySelector(".Select-value-label");
-                                                var key = `${dataEye},${dataType}`;
-                                                var targetCell = mappings[key];
-                                                var [eyeParam, typeParam, rowParam] = targetCell.split(",");
-                                                var targetElement = document.querySelector(
-                          `td[data-eye="${eyeParam}"][data-type="${typeParam}"][data-row="${rowParam}"]`
-                        );
-                                                if (targetElement) {
-                                                    targetElement.innerText = valueField.innerText;
-                                                }
-                                            }
-                                        });
-                                    });
-
-                                    observer.observe(select, {
-                                        childList: true
-                                    });
-                                }
-                            }
-                        }
-                    }
+            inputWrappers.forEach(function (wrapper) {
+                if (wrapper.style.display === "none") {
+                    return;
                 }
+                var label = wrapper.querySelector("label");
+                if (!label) {
+                    return;
+                }
+                var labelText = label.textContent;
+                var fieldTarget = getPGFieldTarget(labelText);
+                var parsed = getPGCellAttributes(fieldTarget);
+
+                if (!parsed) {
+                    return;
+                }
+
+                pgRowsFound += 1;
+
+                var cell = findPGTableCell(table, parsed.eye, parsed.type);
+                var inputContainer = getObsControlInputContainer(wrapper);
+
+                if (!cell) {
+                    logPGTableMapping(labelText, fieldTarget, false, "cell-missing");
+                    return;
+                }
+                if (!inputContainer || inputContainer.closest(".pg-table")) {
+                    logPGTableMapping(
+                        labelText,
+                        fieldTarget,
+                        false,
+                        !inputContainer ? "input-missing" : "input-already-in-table"
+                    );
+                    return;
+                }
+
+                moveOperations.push({
+                    wrapper: wrapper,
+                    inputContainer: inputContainer,
+                    cell: cell,
+                    labelText: labelText,
+                    fieldTarget: fieldTarget,
+                    parsed: parsed
+                });
             });
+
+            var movedCount = 0;
+
+            moveOperations.forEach(function (operation) {
+                operation.cell.innerHTML = "";
+                operation.cell.appendChild(operation.inputContainer);
+                operation.wrapper.style.display = "none";
+                movedCount += 1;
+                logPGTableMapping(
+                    operation.labelText,
+                    operation.fieldTarget,
+                    true,
+                    operation.parsed.eye + " / " + operation.parsed.type
+                );
+            });
+
+            if (PG_TABLE_DEBUG) {
+                console.log("[PG move complete]", {
+                    pgRowsFound: pgRowsFound,
+                    queued: moveOperations.length,
+                    movedCount: movedCount
+                });
+            }
+
+            return { pgRowsFound: pgRowsFound, movedCount: movedCount };
         }
 
         function createEyeDiagram (eyeSide, inputs) {
@@ -487,6 +787,14 @@ angular.module("bahmni.common.conceptSet").directive("formControls", [
             });
         };
 
+        function runPostRenderCustomisations (formName, formUuid) {
+            $timeout(function () {
+                findItemWithText();
+                createPrescriptionTable();
+                createPGTable(formName, formUuid);
+            }, 0, false);
+        }
+
         var controller = function ($scope) {
             var formUuid = $scope.form.formUuid;
             var formVersion = $scope.form.formVersion;
@@ -557,6 +865,7 @@ angular.module("bahmni.common.conceptSet").directive("formControls", [
               loadedFormTranslations[formUuid]
             );
               unMountReactContainer($scope.form.formUuid);
+              runPostRenderCustomisations(formName, formUuid);
           },
           0,
           false
@@ -576,16 +885,13 @@ angular.module("bahmni.common.conceptSet").directive("formControls", [
             locale,
             loadedFormTranslations[formUuid]
           );
+                    runPostRenderCustomisations(formName, formUuid);
                 }
             });
 
             $scope.$watch("form.component", function (newValue) {
                 if (newValue) {
-                    $timeout(function () {
-                        findItemWithText();
-                        createPrescriptionTable();
-                        createPGTable();
-                    }, 0);
+                    runPostRenderCustomisations($scope.form.formName, $scope.form.formUuid);
                 }
             });
 
