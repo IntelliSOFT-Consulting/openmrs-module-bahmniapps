@@ -87,26 +87,112 @@ angular.module('bahmni.registration')
                 return null;
             };
 
-            var submitFeeToOdoo = function (observations) {
-                var feeObs = findObsByConceptName(observations, 'Consultation Fee');
-                var fee = feeObs ? feeObs.value : null;
-                var visitUuid = vm.visitUuid;
+            var extractObsValue = function (obs) {
+                if (!obs) { return null; }
+                var val = obs.value;
+                if (!val) { return null; }
+                if (typeof val !== 'object') { return val; }
+                // Coded concept: val.name may itself be a concept-name object {name, display, ...}
+                var nameVal = val.name || val.display;
+                if (nameVal && typeof nameVal === 'object') {
+                    return nameVal.name || nameVal.display || null;
+                }
+                return nameVal || null;
+            };
+
+            // Shows the billing confirmation popup and returns a promise that resolves
+            // when the user clicks OK — this lets afterSave wait for user acknowledgement.
+            var showOdooPopup = function (notification) {
+                var deferred = $q.defer();
+                notification.dismiss = function () {
+                    $scope.odooNotification = null;
+                    deferred.resolve();
+                };
+                $scope.odooNotification = notification;
+                return deferred.promise;
+            };
+
+            $scope.closeOdooNotification = function () {
+                if ($scope.odooNotification && $scope.odooNotification.dismiss) {
+                    $scope.odooNotification.dismiss();
+                }
+            };
+
+            // Returns a promise that resolves after the Odoo call completes AND the user
+            // dismisses the popup. If there is no fee/patient/visit, resolves immediately.
+            var submitFeeToOdoo = function (observations, resolvedVisitUuid) {
+                var visitUuid = resolvedVisitUuid || vm.visitUuid;
                 var patientUuid = $scope.patient && $scope.patient.uuid;
+                var patientId = $scope.patient && $scope.patient.primaryIdentifier && $scope.patient.primaryIdentifier.identifier;
 
-                console.log('[ConsultationFee] Preparing to sync — patientUuid:', patientUuid, 'visitUuid:', visitUuid, 'fee:', fee);
+                console.log('[ConsultationFee] Preparing to sync — patientId:', patientId,
+                    'patientUuid:', patientUuid, 'visitUuid:', visitUuid);
 
-                if (!fee || !patientUuid) {
-                    console.log('[ConsultationFee] Skipped — no fee value or patient UUID found.');
-                    return;
+                if (!patientUuid || !visitUuid) {
+                    console.log('[ConsultationFee] Skipped — missing patientUuid or visitUuid.');
+                    return $q.resolve();
                 }
 
-                consultationFeeService.postFee(patientUuid, visitUuid, fee)
+                // Show loading indicator immediately so there is no silent gap after clicking Save
+                $scope.odooNotification = {type: 'loading', title: 'Sending to Billing'};
+
+                var paymentMethodObs = findObsByConceptName(observations, 'Payment Method');
+                var modeOfPaymentObs = findObsByConceptName(observations, 'Mode of Payment');
+                var percentageObs    = findObsByConceptName(observations, 'Enter Percentage Subsidized');
+
+                var paymentMethod = extractObsValue(paymentMethodObs);
+                var modeOfPayment = extractObsValue(modeOfPaymentObs);
+                // Normalise to lowercase so Odoo's case-sensitive validation passes (e.g. "Cash" → "cash")
+                if (modeOfPayment && typeof modeOfPayment === 'string') { modeOfPayment = modeOfPayment.toLowerCase(); }
+                if (paymentMethod && typeof paymentMethod === 'string') { paymentMethod = paymentMethod.toLowerCase(); }
+
+                var percentageSubsidized = (percentageObs && percentageObs.value !== null && percentageObs.value !== undefined)
+                    ? percentageObs.value : 0;
+
+                var now = new Date().toISOString();
+                var createdBy = $rootScope.currentUser && ($rootScope.currentUser.username || $rootScope.currentUser.display);
+
+                var payload = {
+                    serviceType: 'consultation',
+                    patientId: patientId,
+                    patientUuid: patientUuid,
+                    currentVisitUuid: visitUuid,
+                    paymentMethod: paymentMethod,
+                    modeOfPayment: modeOfPayment,
+                    percentageSubsidized: percentageSubsidized,
+                    voided: false,
+                    dateCreated: now,
+                    dateChanged: now,
+                    createdBy: createdBy
+                };
+
+                return consultationFeeService.postFee(payload)
                     .then(function (response) {
-                        console.log('[ConsultationFee] Synced to Odoo connector successfully:', response.data);
+                        var d = response.data || {};
+                        console.log('[ConsultationFee] Synced to Odoo connector successfully:', d);
+
+                        var details = [];
+                        if (d.status)       { details.push({label: 'Status',       value: d.status}); }
+                        if (d.message)      { details.push({label: 'Message',      value: d.message}); }
+                        if (d.patient_name) { details.push({label: 'Patient Name', value: d.patient_name}); }
+
+                        var isOdooSuccess = (d.status === 'success' || d.sale_order_name);
+                        return showOdooPopup({
+                            type:    isOdooSuccess ? 'success' : 'warning',
+                            icon:    isOdooSuccess ? '✓' : '⚠',
+                            title:   'Consultation Order Sent to Billing',
+                            details: details
+                        });
                     })
                     .catch(function (error) {
-                        console.warn('[ConsultationFee] Sync failed (non-blocking):', error);
-                        messagingService.showMessage('warn', 'Consultation fee could not be synced to billing — please inform the billing desk.');
+                        console.warn('[ConsultationFee] Sync failed:', error);
+                        return showOdooPopup({
+                            type:    'error',
+                            icon:    '✕',
+                            title:   'Billing Sync Failed',
+                            message: 'The consultation could not be sent to the billing system. Please inform the billing desk.',
+                            details: []
+                        });
                     });
             };
 
@@ -137,16 +223,9 @@ angular.module('bahmni.registration')
                 return createPromise.then(function (response) {
                     var messageParams = {encounterUuid: response.data.encounterUuid, encounterType: response.data.encounterType};
                     auditLogService.log(patientUuid, 'EDIT_ENCOUNTER', messageParams, 'MODULE_LABEL_REGISTRATION_KEY');
-                    submitFeeToOdoo(observationsForFee);
-                    var visitType, visitTypeUuid;
-                    visitTypeUuid = response.data.visitTypeUuid;
-                    visitService.getVisitType().then(function (response) {
-                        visitType = _.find(response.data.results, function (type) {
-                            if (type.uuid === visitTypeUuid) {
-                                return type;
-                            }
-                        });
-                    });
+                    // Use visitUuid from encounter response — covers new-patient case where vm.visitUuid is empty.
+                    var resolvedVisitUuid = (response.data && response.data.visitUuid) || vm.visitUuid;
+                    return submitFeeToOdoo(observationsForFee, resolvedVisitUuid);
                 });
             };
 
