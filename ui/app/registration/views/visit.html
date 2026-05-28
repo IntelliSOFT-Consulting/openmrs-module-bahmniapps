@@ -1,3 +1,32 @@
+<!-- Odoo Billing Confirmation Popup -->
+<div class="odoo-popup-overlay" ng-if="odooNotification">
+    <div class="odoo-popup-modal">
+        <div class="odoo-popup-header odoo-popup-header--{{odooNotification.type}}">
+            <span class="odoo-popup-icon" ng-if="odooNotification.icon">{{odooNotification.icon}}</span>
+            <span>{{odooNotification.title}}</span>
+        </div>
+        <div class="odoo-popup-body">
+            <!-- Loading animation -->
+            <div class="odoo-popup-loading" ng-if="odooNotification.type === 'loading'">
+                <div class="odoo-loading-dot"></div>
+                <div class="odoo-loading-dot"></div>
+                <div class="odoo-loading-dot"></div>
+            </div>
+            <!-- Result table -->
+            <table class="odoo-popup-table" ng-if="odooNotification.type !== 'loading' && odooNotification.details && odooNotification.details.length > 0">
+                <tr ng-repeat="row in odooNotification.details">
+                    <td class="odoo-popup-label">{{row.label}}</td>
+                    <td class="odoo-popup-value">{{row.value}}</td>
+                </tr>
+            </table>
+            <p class="odoo-popup-message" ng-if="odooNotification.message">{{odooNotification.message}}</p>
+        </div>
+        <div class="odoo-popup-footer" ng-if="odooNotification.type !== 'loading'">
+            <button class="confirm odoo-popup-ok-btn" ng-click="closeOdooNotification()">OK</button>
+        </div>
+    </div>
+</div>
+
 <div class="reg-body-wrapper visit-patient-page">
     <div class="non-printable" xmlns="http://www.w3.org/1999/html">
         <div>
