@@ -457,6 +457,31 @@
   padding: 4px;
   position: relative;
   min-width: 80px;
+  box-sizing: border-box;
+
+  .obs-control-select-wrapper,
+  > .obs-control-select-wrapper,
+  .Select,
+  .Select-control {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+
+  input,
+  textarea,
+  .obs-control-field {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+
+  .Select-placeholder,
+  .Select-value,
+  .Select-input {
+    max-width: 100%;
+    box-sizing: border-box;
+  }
 }
 
 /* Textarea container styling */

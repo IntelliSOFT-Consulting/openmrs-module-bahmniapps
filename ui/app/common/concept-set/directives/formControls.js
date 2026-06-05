@@ -9,6 +9,11 @@ angular.module("bahmni.common.conceptSet").directive("formControls", [
         var loadedFormDetails = {};
         var loadedFormTranslations = {};
 
+        // PG refraction table (.pg-table): enabled only for exact published form names below.
+        // Comprehensive Ophthalmic Examinations — "section" mode; section label must be "Refraction Record".
+        // Cataract Surgery Refraction Record — "flat" mode; form must include a table header labeled "PD".
+        // Visible obsControl labels must match buildCataractPGExactLabelMap / buildPGLabelLookupMap / getPGFieldTarget in this file.
+        // Do not rename these forms or PG field labels in Form Builder without updating this JavaScript.
         var PG_TABLE_FORMS = {
             "Comprehensive Ophthalmic Examinations": "section",
             "Cataract Surgery Refraction Record": "flat"
@@ -31,11 +36,14 @@ angular.module("bahmni.common.conceptSet").directive("formControls", [
         };
 
         var PG_TABLE_DEBUG = false;
+        var PG_TABLE_EXPECTED_MOVE_COUNT = 16;
+        var pgTableRebuildTimers = {};
 
         function buildPGLabelLookupMap () {
             var targets = [];
             var distanceLabels = [
-                ["spherical", "RE"], ["spherical", "LE"], ["cylinder", "RE"], ["cylinder", "LE"], ["axis", "RE"], ["axis", "LE"]
+                ["spherical", "RE"], ["spherical", "LE"], ["cylinder", "RE"], ["cylinder", "LE"], ["axis", "RE"], ["axis", "LE"],
+                ["va", "RE"], ["va", "LE"]
             ];
             var nearLabels = [
                 ["spherical", "RE"], ["spherical", "LE"], ["cylinder", "RE"], ["cylinder", "LE"], ["axis", "RE"], ["axis", "LE"],
@@ -70,15 +78,26 @@ angular.module("bahmni.common.conceptSet").directive("formControls", [
             ];
 
             targets.forEach(function (target) {
-                var fieldName = fieldLabelNames[target.field];
-                var eyeName = eyeLabelNames[target.eyeSide];
+                var field = target.field;
+                var eyeSide = target.eyeSide;
+                var fieldName = fieldLabelNames[field];
+                var eyeName = eyeLabelNames[eyeSide];
                 var suffixes = target.powerType === "DV" ? distanceSuffixes : nearSuffixes;
                 suffixes.forEach(function (suffix) {
-                    if (target.field === "va") {
+                    if (field === "va") {
                         map[getPGLabelLookupKey("V/A with PG, " + eyeName + " " + suffix)] = target;
-                        map[getPGLabelLookupKey("V/A with PG, " + eyeName + " PG Near Rx")] = target;
+                        if (target.powerType === "NV") {
+                            map[getPGLabelLookupKey("V/A with PG, " + eyeName + " PG Near Rx")] = target;
+                            map[getPGLabelLookupKey("V/A with PG, " + eyeName + " PG NV Near Rx")] = target;
+                        }
                     } else {
                         map[getPGLabelLookupKey(fieldName + ", " + eyeName + " " + suffix)] = target;
+                        if (target.powerType === "NV") {
+                            var titledField = fieldName.charAt(0).toUpperCase() + fieldName.slice(1);
+                            var titledEye = eyeSide === "RE" ? "Right Eye" : "Left Eye";
+                            map[getPGLabelLookupKey(titledField + ", " + titledEye + " PG Near Rx")] = target;
+                            map[getPGLabelLookupKey(titledField + ", " + titledEye + " PG NV Near Rx")] = target;
+                        }
                     }
                 });
             });
@@ -104,6 +123,10 @@ angular.module("bahmni.common.conceptSet").directive("formControls", [
                 ["Cylinder, Left Eye PG DV Distance Rx", "DV", "LE", "cylinder"],
                 ["Axis, Right Eye PG DV Distance Rx", "DV", "RE", "axis"],
                 ["Axis, Left Eye PG DV Distance Rx", "DV", "LE", "axis"],
+                ["V/A with PG, Right Eye PG DV Distance Rx", "DV", "RE", "va"],
+                ["V/A with PG, Left Eye PG DV Distance Rx", "DV", "LE", "va"],
+                ["V/A with PG, Right Eye PG Distance Rx", "DV", "RE", "va"],
+                ["V/A with PG, Left Eye PG Distance Rx", "DV", "LE", "va"],
                 ["Spherical, Right Eye PG NV Near Rx", "NV", "RE", "spherical"],
                 ["Spherical, Left Eye PG NV Near Rx", "NV", "LE", "spherical"],
                 ["Cylinder, Right Eye PG NV Near Rx", "NV", "RE", "cylinder"],
@@ -187,13 +210,13 @@ angular.module("bahmni.common.conceptSet").directive("formControls", [
             }
 
             var powerType = null;
-            if (/\bpg\s*dv\s*distance\s*rx\b/.test(text) || /\bpg\s*distance\s*rx\b/.test(text) ||
+            if (/\bpg\s*nv\s*near\s*rx\b/.test(text) || /\bpg\s*near\s*rx\b/.test(text) ||
+                /\bpg\s*nv\b/.test(text) || /\bpg\s*near\b/.test(text)) {
+                powerType = "NV";
+            } else if (/\bpg\s*dv\s*distance\s*rx\b/.test(text) || /\bpg\s*distance\s*rx\b/.test(text) ||
                 /\bpg\s*dv\b/.test(text) || /\bpg\s*distance\b/.test(text) ||
                 (/\bdistance\s*rx\b/.test(text) && !/\bnear\s*rx\b/.test(text))) {
                 powerType = "DV";
-            } else if (/\bpg\s*nv\s*near\s*rx\b/.test(text) || /\bpg\s*near\s*rx\b/.test(text) ||
-                /\bpg\s*nv\b/.test(text) || /\bpg\s*near\b/.test(text)) {
-                powerType = "NV";
             }
             if (!powerType) {
                 return null;
@@ -216,6 +239,64 @@ angular.module("bahmni.common.conceptSet").directive("formControls", [
 
         function parsePGObsLabel (labelText) {
             return getPGCellAttributes(getPGFieldTarget(labelText));
+        }
+
+        function getPGTargetKey (target) {
+            return target.powerType + "|" + target.eyeSide + "|" + target.field;
+        }
+
+        function logPGFieldRowDiagnostic (rowIndex, details) {
+            if (PG_TABLE_DEBUG) {
+                console.log("[PG row diagnostic]", Object.assign({ rowIndex: rowIndex }, details));
+            }
+        }
+
+        function logPGMoveOperationDiagnostic (operation, inputContainer) {
+            if (PG_TABLE_DEBUG) {
+                console.log("[PG move operation]", {
+                    labelText: operation.labelText,
+                    inferred: operation.inferred,
+                    targetKey: operation.targetKey,
+                    eye: operation.parsed.eye,
+                    type: operation.parsed.type,
+                    hasInputContainer: !!inputContainer,
+                    inputAlreadyInTable: inputContainer ? !!inputContainer.closest(".pg-table") : false
+                });
+            }
+        }
+
+        function logPGTableCellDiagnostics (table) {
+            if (!PG_TABLE_DEBUG || !table) {
+                return;
+            }
+            var cells = table.querySelectorAll(".input-cell");
+            var report = [];
+            for (var i = 0; i < cells.length; i++) {
+                var cell = cells[i];
+                var child = cell.firstElementChild;
+                report.push({
+                    dataEye: cell.getAttribute("data-eye"),
+                    dataType: cell.getAttribute("data-type"),
+                    dataPgTargetKey: cell.getAttribute("data-pg-target-key"),
+                    childrenCount: cell.children.length,
+                    childTag: child ? child.tagName : null,
+                    childType: child ? child.getAttribute("type") : null,
+                    childClass: child ? child.className : null
+                });
+            }
+            console.log("[PG table cells]", report);
+        }
+
+        function buildPGMoveCandidate (wrapper, fieldTarget, labelText, inferred) {
+            var targetKey = getPGTargetKey(fieldTarget);
+            return {
+                wrapper: wrapper,
+                fieldTarget: fieldTarget,
+                labelText: labelText,
+                labelKey: inferred ? targetKey : getPGLabelLookupKey(labelText),
+                targetKey: targetKey,
+                inferred: inferred
+            };
         }
 
         function findPGTableCell (table, eye, type) {
@@ -246,21 +327,17 @@ angular.module("bahmni.common.conceptSet").directive("formControls", [
             }
 
             if (mode === "section") {
-                var containers = [];
-                var columns = document.querySelectorAll(".form-builder-column");
-                for (var i = 0; i < columns.length; i++) {
-                    var sectionLabels = columns[i].getElementsByClassName("test-section-label");
-                    for (var j = 0; j < sectionLabels.length; j++) {
-                        if (isRefractionRecordSectionLabel(sectionLabels[j].textContent)) {
-                            var obsGroup = columns[i].getElementsByClassName("obsGroup-controls")[0];
-                            if (obsGroup) {
-                                containers.push(obsGroup);
-                            }
-                            break;
-                        }
+                var sectionFormRoot = document.getElementById(formUuid);
+                if (!sectionFormRoot) {
+                    return [];
+                }
+                var refractionSectionLabels = sectionFormRoot.getElementsByClassName("test-section-label");
+                for (var i = 0; i < refractionSectionLabels.length; i++) {
+                    if (isRefractionRecordSectionLabel(refractionSectionLabels[i].textContent)) {
+                        return [sectionFormRoot];
                     }
                 }
-                return containers;
+                return [];
             }
 
             if (mode === "flat") {
@@ -289,12 +366,109 @@ angular.module("bahmni.common.conceptSet").directive("formControls", [
             return null;
         }
 
+        function findPGWrapperForRelease (container, targetKey, labelKey) {
+            var rows = container.getElementsByClassName("form-builder-row");
+            if (targetKey) {
+                for (var r = 0; r < rows.length; r++) {
+                    if (rows[r].getAttribute("data-pg-target-key") === targetKey) {
+                        return rows[r];
+                    }
+                }
+            }
+            if (labelKey) {
+                for (var s = 0; s < rows.length; s++) {
+                    var label = rows[s].querySelector("label");
+                    if (label && getPGLabelLookupKey(label.textContent) === labelKey) {
+                        return rows[s];
+                    }
+                }
+            }
+            return null;
+        }
+
+        function releasePGInputsBeforeTableRemoval (tableWrapper, container) {
+            if (!tableWrapper || !container) {
+                return;
+            }
+            var cells = tableWrapper.querySelectorAll(".pg-table .input-cell");
+            for (var c = 0; c < cells.length; c++) {
+                var cell = cells[c];
+                var targetKey = cell.getAttribute("data-pg-target-key");
+                var labelKey = cell.getAttribute("data-pg-label-key");
+                var inputContainer = getObsControlInputContainer(cell);
+                if (!inputContainer || (!targetKey && !labelKey)) {
+                    continue;
+                }
+                var wrapper = findPGWrapperForRelease(container, targetKey, labelKey);
+                if (wrapper) {
+                    wrapper.style.display = "";
+                    wrapper.classList.remove("pg-field-moved");
+                    wrapper.removeAttribute("data-pg-target-key");
+                    var restoreTarget = getObsControlRestoreContainer(wrapper);
+                    restoreTarget.appendChild(inputContainer);
+                }
+                cell.removeAttribute("data-pg-target-key");
+                cell.removeAttribute("data-pg-label-key");
+            }
+        }
+
+        function disconnectPGMoveObserver (container) {
+            if (!container) {
+                return;
+            }
+            if (container._pgMoveObserver) {
+                container._pgMoveObserver.disconnect();
+                container._pgMoveObserver = null;
+            }
+            if (container._pgMoveObserverStopTimeout) {
+                $timeout.cancel(container._pgMoveObserverStopTimeout);
+                container._pgMoveObserverStopTimeout = null;
+            }
+        }
+
+        function schedulePGTableMovePasses (pgContainer) {
+            if (!pgContainer) {
+                return;
+            }
+
+            disconnectPGMoveObserver(pgContainer);
+
+            function runMovePasses () {
+                var table = pgContainer.querySelector(".pg-table-wrapper .pg-table");
+                if (!table) {
+                    return null;
+                }
+                return moveInputsToCells(pgContainer, table);
+            }
+
+            runMovePasses();
+
+            if (typeof MutationObserver !== "undefined") {
+                var observer = new MutationObserver(function () {
+                    runMovePasses();
+                });
+                observer.observe(pgContainer, { childList: true, subtree: true });
+                pgContainer._pgMoveObserver = observer;
+                pgContainer._pgMoveObserverStopTimeout = $timeout(function () {
+                    disconnectPGMoveObserver(pgContainer);
+                }, 4000, false);
+            }
+
+            [150, 400, 800].forEach(function (delayMs) {
+                $timeout(function () {
+                    runMovePasses();
+                }, delayMs, false);
+            });
+        }
+
         function removeExistingPGTableWrappers (container) {
             if (!container) {
                 return;
             }
+            disconnectPGMoveObserver(container);
             var wrappers = container.querySelectorAll(".pg-table-wrapper");
             for (var i = wrappers.length - 1; i >= 0; i--) {
+                releasePGInputsBeforeTableRemoval(wrappers[i], container);
                 if (wrappers[i].parentNode) {
                     wrappers[i].parentNode.removeChild(wrappers[i]);
                 }
@@ -478,7 +652,20 @@ angular.module("bahmni.common.conceptSet").directive("formControls", [
 
             insertPGTableWrapper(pgContainer, tableWrapper);
 
-            return moveInputsToCells(pgContainer, table);
+            var moveResult = moveInputsToCells(pgContainer, table);
+            schedulePGTableMovePasses(pgContainer);
+
+            return moveResult;
+        }
+
+        function scheduleCreatePGTable (formName, formUuid) {
+            if (pgTableRebuildTimers[formUuid]) {
+                $timeout.cancel(pgTableRebuildTimers[formUuid]);
+            }
+            pgTableRebuildTimers[formUuid] = $timeout(function () {
+                pgTableRebuildTimers[formUuid] = null;
+                createPGTable(formName, formUuid);
+            }, 50, false);
         }
 
         function createPGTable (formName, formUuid) {
@@ -546,30 +733,140 @@ angular.module("bahmni.common.conceptSet").directive("formControls", [
             return tr;
         }
 
-        function getObsControlInputContainer (wrapper) {
-            return wrapper.querySelector(".obs-control-field") ||
-                wrapper.querySelector(".obs-control-select-wrapper");
+        function getObsControlInputContainer (wrapper, fieldTarget) {
+            var contentWrap = wrapper.querySelector(".form-field-content-wrap");
+            var searchRoot = contentWrap || wrapper;
+            var inputContainer = null;
+
+            if (fieldTarget && fieldTarget.field === "axis") {
+                inputContainer = searchRoot.querySelector(".obs-control-field") ||
+                    searchRoot.querySelector("textarea, input[type='text'], input:not([type])");
+            } else if (fieldTarget && (fieldTarget.field === "spherical" ||
+                fieldTarget.field === "cylinder" || fieldTarget.field === "va")) {
+                inputContainer = searchRoot.querySelector(".obs-control-select-wrapper");
+            }
+
+            if (!inputContainer) {
+                inputContainer = searchRoot.querySelector(".obs-control-select-wrapper") ||
+                    searchRoot.querySelector(".obs-control-field") ||
+                    searchRoot.querySelector("input, select, textarea");
+            }
+            if (inputContainer) {
+                return inputContainer;
+            }
+            if (contentWrap) {
+                for (var i = 0; i < contentWrap.children.length; i++) {
+                    var child = contentWrap.children[i];
+                    if (child.querySelector("input, select, textarea, .Select") ||
+                        child.textContent.trim() ||
+                        child.children.length) {
+                        return child;
+                    }
+                }
+
+                if (contentWrap.textContent.trim() || contentWrap.children.length) {
+                    return contentWrap;
+                }
+            }
+
+            for (var j = 0; j < wrapper.children.length; j++) {
+                var wrapperChild = wrapper.children[j];
+                var tagName = wrapperChild.tagName ? wrapperChild.tagName.toLowerCase() : "";
+
+                if (tagName === "label") {
+                    continue;
+                }
+
+                if (wrapperChild.classList && wrapperChild.classList.contains("pg-table-wrapper")) {
+                    continue;
+                }
+
+                if (wrapperChild.querySelector &&
+                    (wrapperChild.querySelector("input, select, textarea, .Select") ||
+                    wrapperChild.textContent.trim() ||
+                    wrapperChild.children.length)) {
+                    return wrapperChild;
+                }
+            }
+
+            return null;
+        }
+
+        function getObsControlRestoreContainer (wrapper) {
+            return wrapper.querySelector(".form-field-content-wrap") || wrapper;
+        }
+
+        function getPGFieldRows (container) {
+            var rows = container.getElementsByClassName("form-builder-row");
+            var candidates = [];
+
+            for (var i = 0; i < rows.length; i++) {
+                var wrapper = rows[i];
+
+                if (wrapper.classList.contains("pg-field-moved") || wrapper.style.display === "none") {
+                    continue;
+                }
+
+                var label = wrapper.querySelector("label");
+                if (!label) {
+                    continue;
+                }
+
+                var labelText = label.textContent.trim();
+                var fieldTarget = getPGFieldTarget(labelText);
+                if (!fieldTarget) {
+                    continue;
+                }
+
+                var inputContainer = getObsControlInputContainer(wrapper, fieldTarget) ||
+                    getObsControlInputContainer(wrapper);
+
+                if (!inputContainer) {
+                    logPGFieldRowDiagnostic(i, {
+                        labelText: labelText,
+                        targetKey: getPGTargetKey(fieldTarget),
+                        detail: "input-missing"
+                    });
+                    continue;
+                }
+
+                candidates.push(buildPGMoveCandidate(
+                    wrapper,
+                    fieldTarget,
+                    labelText,
+                    false
+                ));
+            }
+
+            if (PG_TABLE_DEBUG) {
+                console.log("[PG row candidates]", {
+                    candidateCount: candidates.length,
+                    expected: PG_TABLE_EXPECTED_MOVE_COUNT
+                });
+            }
+
+            return candidates;
+        }
+
+        function clearPGTableCell (cell) {
+            while (cell.firstChild) {
+                cell.removeChild(cell.firstChild);
+            }
         }
 
         function moveInputsToCells (section, table) {
-            var inputWrappers = Array.prototype.slice.call(
-                section.getElementsByClassName("form-builder-row")
-            );
+            var candidates = getPGFieldRows(section);
             var moveOperations = [];
             var pgRowsFound = 0;
 
-            inputWrappers.forEach(function (wrapper) {
-                if (wrapper.style.display === "none") {
+            candidates.forEach(function (candidate) {
+                var wrapper = candidate.wrapper;
+                if (wrapper.classList.contains("pg-field-moved") || wrapper.style.display === "none") {
                     return;
                 }
-                var label = wrapper.querySelector("label");
-                if (!label) {
-                    return;
-                }
-                var labelText = label.textContent;
-                var fieldTarget = getPGFieldTarget(labelText);
-                var parsed = getPGCellAttributes(fieldTarget);
 
+                var fieldTarget = candidate.fieldTarget;
+                var parsed = getPGCellAttributes(fieldTarget);
                 if (!parsed) {
                     return;
                 }
@@ -577,44 +874,81 @@ angular.module("bahmni.common.conceptSet").directive("formControls", [
                 pgRowsFound += 1;
 
                 var cell = findPGTableCell(table, parsed.eye, parsed.type);
-                var inputContainer = getObsControlInputContainer(wrapper);
+                var inputContainer = getObsControlInputContainer(wrapper, fieldTarget);
 
                 if (!cell) {
-                    logPGTableMapping(labelText, fieldTarget, false, "cell-missing");
+                    logPGTableMapping(candidate.labelText, fieldTarget, false, "cell-missing");
                     return;
                 }
-                if (!inputContainer || inputContainer.closest(".pg-table")) {
-                    logPGTableMapping(
-                        labelText,
-                        fieldTarget,
-                        false,
-                        !inputContainer ? "input-missing" : "input-already-in-table"
-                    );
+                if (!inputContainer) {
+                    logPGTableMapping(candidate.labelText, fieldTarget, false, "input-missing");
+                    return;
+                }
+                if (inputContainer.closest(".pg-table")) {
+                    logPGTableMapping(candidate.labelText, fieldTarget, false, "input-already-in-table");
                     return;
                 }
 
-                moveOperations.push({
+                var operation = {
                     wrapper: wrapper,
                     inputContainer: inputContainer,
                     cell: cell,
-                    labelText: labelText,
+                    labelText: candidate.labelText,
                     fieldTarget: fieldTarget,
-                    parsed: parsed
-                });
+                    parsed: parsed,
+                    labelKey: candidate.labelKey,
+                    targetKey: candidate.targetKey,
+                    inferred: candidate.inferred
+                };
+                logPGMoveOperationDiagnostic(operation, inputContainer);
+                moveOperations.push(operation);
             });
 
             var movedCount = 0;
 
             moveOperations.forEach(function (operation) {
-                operation.cell.innerHTML = "";
+                clearPGTableCell(operation.cell);
+                operation.cell.removeAttribute("data-pg-target-key");
+                operation.cell.removeAttribute("data-pg-label-key");
                 operation.cell.appendChild(operation.inputContainer);
+
+                if (operation.cell.children.length === 0) {
+                    logPGTableMapping(
+                        operation.labelText,
+                        operation.fieldTarget,
+                        false,
+                        "append-failed"
+                    );
+                    if (PG_TABLE_DEBUG) {
+                        console.log("[PG move append failed]", {
+                            targetKey: operation.targetKey,
+                            labelText: operation.labelText
+                        });
+                    }
+                    return;
+                }
+
+                operation.cell.setAttribute("data-pg-target-key", operation.targetKey);
+                operation.cell.setAttribute("data-pg-label-key", operation.labelKey);
+                operation.wrapper.setAttribute("data-pg-target-key", operation.targetKey);
                 operation.wrapper.style.display = "none";
+                operation.wrapper.classList.add("pg-field-moved");
                 movedCount += 1;
+
+                if (PG_TABLE_DEBUG) {
+                    console.log("[PG move appended]", {
+                        targetKey: operation.targetKey,
+                        cellChildren: operation.cell.children.length,
+                        inferred: operation.inferred
+                    });
+                }
+
                 logPGTableMapping(
                     operation.labelText,
                     operation.fieldTarget,
                     true,
-                    operation.parsed.eye + " / " + operation.parsed.type
+                    operation.parsed.eye + " / " + operation.parsed.type +
+                        (operation.inferred ? " (inferred)" : "")
                 );
             });
 
@@ -622,8 +956,10 @@ angular.module("bahmni.common.conceptSet").directive("formControls", [
                 console.log("[PG move complete]", {
                     pgRowsFound: pgRowsFound,
                     queued: moveOperations.length,
-                    movedCount: movedCount
+                    movedCount: movedCount,
+                    expected: PG_TABLE_EXPECTED_MOVE_COUNT
                 });
+                logPGTableCellDiagnostics(table);
             }
 
             return { pgRowsFound: pgRowsFound, movedCount: movedCount };
@@ -791,7 +1127,7 @@ angular.module("bahmni.common.conceptSet").directive("formControls", [
             $timeout(function () {
                 findItemWithText();
                 createPrescriptionTable();
-                createPGTable(formName, formUuid);
+                scheduleCreatePGTable(formName, formUuid);
             }, 0, false);
         }
 
