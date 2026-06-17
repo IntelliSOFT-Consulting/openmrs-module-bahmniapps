@@ -3,7 +3,9 @@
 angular.module('bahmni.common.patientSearch')
 .controller('PatientsListController', ['$scope', '$window', 'patientService', '$rootScope', 'appService', 'spinner',
     '$stateParams', '$bahmniCookieStore', 'printer', 'configurationService', "$timeout",
-    function ($scope, $window, patientService, $rootScope, appService, spinner, $stateParams, $bahmniCookieStore, printer, configurationService, $timeout) {
+    'consultationPaymentGateService', 'confirmBox',
+    function ($scope, $window, patientService, $rootScope, appService, spinner, $stateParams, $bahmniCookieStore, printer, configurationService, $timeout,
+        consultationPaymentGateService, confirmBox) {
         $scope.preferExtraIdInSearchResults = appService.getAppDescriptor().getConfigValue("preferExtraIdInSearchResults");
         $scope.activeHeaders = [];
         const DEFAULT_FETCH_DELAY = 2000;
@@ -26,6 +28,7 @@ angular.module('bahmni.common.patientSearch')
             $scope.$watch('search.visiblePatients', function (activePatientsList) {
                 if (activePatientsList && activePatientsList.length > 0) {
                     $scope.getHeadings();
+                    markNotPaidForConsultationQueue(activePatientsList);
                 }
                 else {
                     if ($scope.activeHeaders.length != 0) {
@@ -217,23 +220,58 @@ angular.module('bahmni.common.patientSearch')
             }
         };
 
-        $scope.forwardPatient = function (patient, heading) {
+        var encounterTypeMap = {
+            "COUNSELLING": "COUNSELLING",
+            "TRIAGE": "TRIAGE",
+            "CONSULTATION": "CONSULTATION",
+            "INVESTIGATION": "INVESTIGATION"
+        };
+
+        var getEncounterTypeForQueue = function (queueName) {
+            return encounterTypeMap[queueName] || "CONSULTATION";
+        };
+
+        // Shows a blocking popup telling the user the consultation fee hasn't been paid yet.
+        // Mirrors the existing confirmBox usage pattern elsewhere in the app (e.g.
+        // consultationController.js) — a single OK button dismisses it, nothing else happens.
+        var showPaymentRequiredPopup = function () {
+            var popupScope = $rootScope.$new();
+            popupScope.message = 'PAYMENT_REQUIRED_BEFORE_DASHBOARD_TRANSLATION_KEY';
+            popupScope.ok = function (close) {
+                close();
+            };
+            confirmBox({
+                scope: popupScope,
+                actions: [{name: 'ok', display: 'OKAY_LABEL'}]
+            });
+        };
+
+        // Populates row.notPaidForConsultation on every visible row of the CONSULTATION queue so
+        // the "Not Paid" badge (patientsList.html) can show without waiting for a row click.
+        // Only runs for the CONSULTATION queue — other queue types aren't consultation billing.
+        var markNotPaidForConsultationQueue = function (rows) {
+            var queueName = $scope.search.searchType && $scope.search.searchType.name;
+            if (getEncounterTypeForQueue(queueName) !== 'CONSULTATION') {
+                return;
+            }
+            _.each(rows, function (row) {
+                if (!row.activeVisitUuid) {
+                    row.notPaidForConsultation = true;
+                    return;
+                }
+                consultationPaymentGateService.isConsultationPaid(row.uuid, row.activeVisitUuid).then(function (paid) {
+                    row.notPaidForConsultation = !paid;
+                });
+            });
+        };
+
+        var proceedToDashboard = function (patient, heading, queueName, encounterType) {
             var options = $.extend({}, $stateParams);
             $rootScope.patientAdmitLocationStatus = patient.Status;
             $rootScope.selectedPatient = patient;
 
-            var queueName = $scope.search.searchType.name;
             $rootScope.queueName = queueName;
             console.log("Global Queue Set:", $rootScope.queueName);
-
-            var encounterTypeMap = {
-                "COUNSELLING": "COUNSELLING",
-                "TRIAGE": "TRIAGE",
-                "CONSULTATION": "CONSULTATION",
-                "INVESTIGATION": "INVESTIGATION"
-            };
-
-            var encounterType = encounterTypeMap[queueName] || "CONSULTATION";
             console.log("Queues:", queueName, "Encounter Type:", encounterType);
 
             $.extend(options, {
@@ -280,6 +318,34 @@ angular.module('bahmni.common.patientSearch')
                     }, 1000);
                 }
             }
+        };
+
+        // Consultation payment gate: only the CONSULTATION queue is billed, so other queue types
+        // (triage, counselling, investigation) proceed exactly as before. For CONSULTATION, the
+        // patient must have an active visit AND a PAID record before the dashboard opens —
+        // otherwise a blocking popup is shown and navigation does not happen.
+        $scope.forwardPatient = function (patient, heading) {
+            var queueName = $scope.search.searchType.name;
+            var encounterType = getEncounterTypeForQueue(queueName);
+
+            if (encounterType !== 'CONSULTATION') {
+                proceedToDashboard(patient, heading, queueName, encounterType);
+                return;
+            }
+
+            if (!patient.activeVisitUuid) {
+                console.warn('[ConsultationPaymentGate] No active visit — blocking navigation for patient', patient.uuid);
+                showPaymentRequiredPopup();
+                return;
+            }
+
+            consultationPaymentGateService.isConsultationPaid(patient.uuid, patient.activeVisitUuid).then(function (paid) {
+                if (paid) {
+                    proceedToDashboard(patient, heading, queueName, encounterType);
+                } else {
+                    showPaymentRequiredPopup();
+                }
+            });
         };
 
         var getPatientCountSeriallyBySearchIndex = function (index) {

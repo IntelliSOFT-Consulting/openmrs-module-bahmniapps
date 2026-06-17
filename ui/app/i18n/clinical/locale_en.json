@@ -108,6 +108,8 @@
     "PATIENT_DOCUMENT_TRANSLATION_KEY": "Patient Documents",
     "BAHMNI_HOME_TRANSLATION_KEY": "Bahmni Home",
     "PATIENT_QUEUE_TRANSLATION_KEY": "Patient Queue",
+    "PAYMENT_REQUIRED_BEFORE_DASHBOARD_TRANSLATION_KEY": "This patient has not paid the consultation fee. Please complete payment before proceeding.",
+    "NOT_PAID_TRANSLATION_KEY": "Not Paid",
     "LOGOUT_TRANSLATION_KEY": "Logout",
     "OBS_ABNORMAL_TRANSLATE_KEY": "Abnormal",
     "OBS_UNKNOWN_TRANSLATE_KEY": "Unknown",
