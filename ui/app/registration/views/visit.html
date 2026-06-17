@@ -22,6 +22,7 @@
             <p class="odoo-popup-message" ng-if="odooNotification.message">{{odooNotification.message}}</p>
         </div>
         <div class="odoo-popup-footer" ng-if="odooNotification.type !== 'loading'">
+            <button class="cancel odoo-popup-retry-btn" ng-if="odooNotification.showRetry" ng-click="retryOdooNotification()">Retry</button>
             <button class="confirm odoo-popup-ok-btn" ng-click="closeOdooNotification()">OK</button>
         </div>
     </div>

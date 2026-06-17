@@ -74,6 +74,7 @@
                                 <span class="icons-container">
                                     <i class="ipd-indication fa fa-bed" ng-if="::(row.hasBeenAdmitted===true||row.hasBeenAdmitted==='true')"></i>
                                     <i ng-if="::iconAttributeConfig.attrName && (row[iconAttributeConfig.attrName] === iconAttributeConfig.attrValue || (row.customAttribute ? row.customAttribute[iconAttributeConfig.attrName] === iconAttributeConfig.attrValue : false))" class="ipd-indication list-icon-style" ng-class="iconAttributeConfig.icon" ng-style="{{iconAttributeConfig.iconStyle}}"></i>
+                                    <i class="ipd-indication not-paid-indication fa fa-credit-card" ng-if="row.notPaidForConsultation === true" title="{{'NOT_PAID_TRANSLATION_KEY' | translate}}"></i>
                                 </span>
                             </div>
                             <span ng-if="::(!isHeadingOfLinkColumn(heading.name) && !isHeadingOfName(heading.name))">
@@ -96,6 +97,7 @@
                     <span class="icons-container">
                         <i class="ipd-indication fa fa-bed" ng-if="::(patient.hasBeenAdmitted===true||patient.hasBeenAdmitted==='true')"></i>
                         <i ng-if="::iconAttributeConfig.attrName && patient[iconAttributeConfig.attrName] === iconAttributeConfig.attrValue || (patient.customAttribute ? patient.customAttribute[iconAttributeConfig.attrName] === iconAttributeConfig.attrValue : false)" class="ipd-indication" ng-class="iconAttributeConfig.icon" ng-style="{{iconAttributeConfig.iconStyle}}"></i>
+                        <i class="ipd-indication not-paid-indication fa fa-credit-card" ng-if="patient.notPaidForConsultation === true" title="{{'NOT_PAID_TRANSLATION_KEY' | translate}}"></i>
                     </span>
                 </li>
             </ul>

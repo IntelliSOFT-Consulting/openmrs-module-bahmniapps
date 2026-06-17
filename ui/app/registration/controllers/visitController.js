@@ -100,13 +100,13 @@ angular.module('bahmni.registration')
                 return nameVal || null;
             };
 
-            // Shows the billing confirmation popup and returns a promise that resolves
-            // when the user clicks OK — this lets afterSave wait for user acknowledgement.
+            // Shows the billing confirmation popup and returns a promise that resolves with
+            // the action the user took ('ok' or 'retry') — lets callers branch on dismissal.
             var showOdooPopup = function (notification) {
                 var deferred = $q.defer();
-                notification.dismiss = function () {
+                notification.dismiss = function (action) {
                     $scope.odooNotification = null;
-                    deferred.resolve();
+                    deferred.resolve(action);
                 };
                 $scope.odooNotification = notification;
                 return deferred.promise;
@@ -114,12 +114,20 @@ angular.module('bahmni.registration')
 
             $scope.closeOdooNotification = function () {
                 if ($scope.odooNotification && $scope.odooNotification.dismiss) {
-                    $scope.odooNotification.dismiss();
+                    $scope.odooNotification.dismiss('ok');
                 }
             };
 
-            // Returns a promise that resolves after the Odoo call completes AND the user
-            // dismisses the popup. If there is no fee/patient/visit, resolves immediately.
+            $scope.retryOdooNotification = function () {
+                if ($scope.odooNotification && $scope.odooNotification.dismiss) {
+                    $scope.odooNotification.dismiss('retry');
+                }
+            };
+
+            // Returns a promise that resolves after the patient is synchronized to Odoo AND
+            // the user dismisses the popup (or gives up after a failed retry). If there is no
+            // fee/patient/visit, resolves immediately. Supports a manual Retry that re-attempts
+            // the sync without re-running registration.
             var submitFeeToOdoo = function (observations, resolvedVisitUuid) {
                 var visitUuid = resolvedVisitUuid || vm.visitUuid;
                 var patientUuid = $scope.patient && $scope.patient.uuid;
@@ -132,9 +140,6 @@ angular.module('bahmni.registration')
                     console.log('[ConsultationFee] Skipped — missing patientUuid or visitUuid.');
                     return $q.resolve();
                 }
-
-                // Show loading indicator immediately so there is no silent gap after clicking Save
-                $scope.odooNotification = {type: 'loading', title: 'Sending to Billing'};
 
                 var paymentMethodObs = findObsByConceptName(observations, 'Payment Method');
                 var modeOfPaymentObs = findObsByConceptName(observations, 'Mode of Payment');
@@ -149,51 +154,96 @@ angular.module('bahmni.registration')
                 var percentageSubsidized = (percentageObs && percentageObs.value !== null && percentageObs.value !== undefined)
                     ? percentageObs.value : 0;
 
-                var now = new Date().toISOString();
                 var createdBy = $rootScope.currentUser && ($rootScope.currentUser.username || $rootScope.currentUser.display);
 
-                var payload = {
-                    serviceType: 'consultation',
-                    patientId: patientId,
-                    patientUuid: patientUuid,
-                    currentVisitUuid: visitUuid,
-                    paymentMethod: paymentMethod,
-                    modeOfPayment: modeOfPayment,
-                    percentageSubsidized: percentageSubsidized,
-                    voided: false,
-                    dateCreated: now,
-                    dateChanged: now,
-                    createdBy: createdBy
+                var buildPayload = function () {
+                    var now = new Date().toISOString();
+                    return {
+                        serviceType: 'consultation',
+                        patientId: patientId,
+                        patientUuid: patientUuid,
+                        currentVisitUuid: visitUuid,
+                        paymentMethod: paymentMethod,
+                        modeOfPayment: modeOfPayment,
+                        percentageSubsidized: percentageSubsidized,
+                        voided: false,
+                        dateCreated: now,
+                        dateChanged: now,
+                        createdBy: createdBy
+                    };
                 };
 
-                return consultationFeeService.postFee(payload)
-                    .then(function (response) {
-                        var d = response.data || {};
-                        console.log('[ConsultationFee] Synced to Odoo connector successfully:', d);
+                var deferred = $q.defer();
 
-                        var details = [];
-                        if (d.status)       { details.push({label: 'Status',       value: d.status}); }
-                        if (d.message)      { details.push({label: 'Message',      value: d.message}); }
-                        if (d.patient_name) { details.push({label: 'Patient Name', value: d.patient_name}); }
-
-                        var isOdooSuccess = (d.status === 'success' || d.sale_order_name);
-                        return showOdooPopup({
-                            type:    isOdooSuccess ? 'success' : 'warning',
-                            icon:    isOdooSuccess ? '✓' : '⚠',
-                            title:   'Consultation Order Sent to Billing',
-                            details: details
-                        });
-                    })
-                    .catch(function (error) {
-                        console.warn('[ConsultationFee] Sync failed:', error);
-                        return showOdooPopup({
-                            type:    'error',
-                            icon:    '✕',
-                            title:   'Billing Sync Failed',
-                            message: 'The consultation could not be sent to the billing system. Please inform the billing desk.',
-                            details: []
-                        });
+                var showFailurePopup = function (title, message) {
+                    return showOdooPopup({
+                        type:       'error',
+                        icon:       '✕',
+                        title:      title,
+                        message:    message,
+                        details:    [],
+                        showRetry:  true
+                    }).then(function (action) {
+                        if (action === 'retry') {
+                            return attemptSync();
+                        }
+                        deferred.resolve();
                     });
+                };
+
+                var attemptSync = function () {
+                    // Loading indicator — shown immediately so there is no silent gap, and again
+                    // on every retry so the user always sees progress rather than a stale error.
+                    $scope.odooNotification = {type: 'loading', title: 'Synchronizing Patient with Billing System...'};
+
+                    return consultationFeeService.postFee(buildPayload())
+                        .then(function (response) {
+                            var d = response.data || {};
+                            console.log('[ConsultationFee] Odoo connector response:', d);
+
+                            if (d.errorType === 'patient_sync_failed') {
+                                return showFailurePopup('Patient Sync Failed',
+                                    d.message || 'The patient record failed to synchronize to Odoo.');
+                            }
+                            if (d.errorType === 'order_failed') {
+                                return showFailurePopup('Consultation Order Failed',
+                                    d.message || 'The patient was synchronized, but the consultation order could not be created.');
+                            }
+
+                            var details = [];
+                            if (d.status)       { details.push({label: 'Status',       value: d.status}); }
+                            if (d.message)      { details.push({label: 'Message',      value: d.message}); }
+                            if (d.patient_name) { details.push({label: 'Patient Name', value: d.patient_name}); }
+
+                            var isOdooSuccess = (d.status === 'success' || d.sale_order_name);
+                            if (!isOdooSuccess) {
+                                // Unrecognised/legacy response shape that isn't explicitly flagged as an
+                                // error — show what we know rather than guessing at a specific cause.
+                                return showOdooPopup({
+                                    type:    'warning',
+                                    icon:    '⚠',
+                                    title:   'Consultation Order Sent to Billing',
+                                    details: details
+                                }).then(function () { deferred.resolve(); });
+                            }
+
+                            return showOdooPopup({
+                                type:    'success',
+                                icon:    '✓',
+                                title:   'Consultation Order Sent to Billing',
+                                details: details
+                            }).then(function () { deferred.resolve(); });
+                        })
+                        .catch(function (error) {
+                            console.warn('[ConsultationFee] Sync failed:', error);
+                            return showFailurePopup('Patient Sync Failed',
+                                'Could not reach the billing system to synchronize the patient record. ' +
+                                'Please check your network connection and retry.');
+                        });
+                };
+
+                attemptSync();
+                return deferred.promise;
             };
 
             var save = function () {
