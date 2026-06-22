@@ -123,6 +123,26 @@
         }
     }
 
+    .drug-stock-warning {
+        display: inline-block;
+        font-size: 11px;
+        font-weight: bold;
+        font-family: $OpenSansFont;
+        padding: 2px 8px;
+        border-radius: 10px;
+        line-height: 1.6;
+
+        &.drug-stock-warning-out {
+            background-color: #f2dede;
+            color: #a94442;
+        }
+
+        &.drug-stock-warning-exceeds {
+            background-color: #fcf2e0;
+            color: #b06d0f;
+        }
+    }
+
     .footer-note .time-stamp {
         display: inline-block;
         padding-right: 5px;
@@ -447,6 +467,36 @@
                 border-bottom: 1px solid $lightGray;
                 padding: 20px 0 5px;
                 margin: 0 0 10px;
+            }
+
+            .drug-stock-label {
+                clear: both;
+                display: block;
+                border-radius: 3px;
+                font-size: 13px;
+                padding: 6px 10px;
+                margin: 10px 0 5px;
+
+                &.drug-stock-label-available {
+                    background-color: #dff0d8;
+                    color: #3c763d;
+                    border-left: 4px solid #3c763d;
+                    font-weight: bold;
+                }
+
+                &.drug-stock-label-out {
+                    background-color: #f2dede;
+                    color: #a94442;
+                    border-left: 4px solid #a94442;
+                    font-weight: bold;
+                }
+
+                &.drug-stock-label-unknown {
+                    background-color: #f5f5f5;
+                    color: #777;
+                    border-left: 4px solid #bbb;
+                    font-style: italic;
+                }
             }
 
             .cdss-alert {

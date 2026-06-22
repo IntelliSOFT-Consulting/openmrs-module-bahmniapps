@@ -32,6 +32,10 @@ angular.module("bahmni.common.uiHelper").controller("MessageController", [ "$sco
             return $scope.messages.alert.length > 0;
         };
 
+        $scope.isWarningMessagePresent = function () {
+            return $scope.messages.warning.length > 0;
+        };
+
         $scope.discardChanges = function (level) {
             $state.discardChanges = true;
             $scope.hideMessage(level);

@@ -152,6 +152,8 @@
     "MEDICATION_DOSING_INSTRUCTIONS_PLACEHOLDER": "Choose Instruction",
     "MEDICATION_LABEL_ADDITIONAL_INSTRUCTIONS": "Additional Instructions",
     "MEDICATION_ADDITIONAL_INFORMATION_LABEL": "Additional Information",
+    "DRUG_OUT_OF_STOCK_WARNING": "is currently out of stock in the billing system.",
+    "DRUG_QUANTITY_EXCEEDS_STOCK_WARNING": "requested quantity exceeds the available stock of",
     "MEDICATION_DRUG_NAME_PLACEHOLDER": "Choose Drug",
     "MEDICATION_CHANGE_DURATION_BUTTON": "Change Duration",
     "MEDICATION_NEW_PRESCRIPTION": "New Prescription",

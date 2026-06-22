@@ -234,6 +234,8 @@
                     </div>
                 </div>
 
+                <div ng-if="treatment.drug.uuid" ng-bind-html="getDrugStockLabel(treatment.drug)"></div>
+
                 <h3 class="orderSet-additional-info" ng-show="treatmentConfig.showAdditionalInformation()">{{ ::treatmentConfig.translate('additionalInformation', 'MEDICATION_ADDITIONAL_INFORMATION_LABEL') }} </h3>
                 <article class="form-field" ng-if="!treatmentConfig.isHiddenField('sos')">
                     <div class="field-attribute">
