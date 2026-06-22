@@ -345,6 +345,57 @@
           box-sizing: border-box;
           position: relative;
           text-align: center;
+
+          .bed-reservation-badge {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            z-index: 10;
+
+            .reservation-icon {
+              display: inline-block;
+              width: 18px;
+              height: 18px;
+              line-height: 18px;
+              border-radius: 50%;
+              font-size: 10px;
+              color: #fff;
+              cursor: pointer;
+              // A crisp white ring separates the icon from the now-tinted reserved-bed cell
+              // behind it, so it reads clearly as its own marker rather than blending in.
+              box-shadow: 0 0 0 2px #fff;
+
+              &.reservation-pending {
+                background-color: #d9534f;
+              }
+
+              &.reservation-paid {
+                background-color: #b06d0f;
+              }
+            }
+
+            .reservation-tooltip {
+              position: absolute;
+              top: 22px;
+              right: 0;
+              width: 180px;
+              background: #fff;
+              border: 1px solid #ccc;
+              border-radius: 3px;
+              box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+              padding: 8px 10px;
+              text-align: left;
+              font-size: 12px;
+              color: #333;
+              cursor: default;
+
+              a {
+                display: inline-block;
+                margin-top: 5px;
+                color: #2e96e0;
+              }
+            }
+          }
         }
 
       }
@@ -549,6 +600,39 @@ div[ng-app="adt"] {
   .bed-space {
     border: 1px solid #0cbc3d;
   }
+}
+
+// A reserved bed is visually its own category, not just an "Available" bed with a small badge —
+// the whole cell gets a tinted background/border distinct from both Available (white/green) and
+// Occupied (solid green), so it's recognisable at a glance across a full ward grid.
+.bed.reserved-pending {
+  background: #f2dede !important;
+  border: 1px solid #d9534f;
+  .bed-space {
+    border: 1px solid #d9534f;
+    background: #f2dede;
+  }
+}
+
+.bed.reserved-paid {
+  background: #fcf2e0 !important;
+  border: 1px solid #b06d0f;
+  .bed-space {
+    border: 1px solid #b06d0f;
+    background: #fcf2e0;
+  }
+}
+
+// Lets a clinician spot which ward/room has a reservation without opening every one — used both
+// next to the top-level ward buttons and the room tabs within a ward.
+.ward-reservation-indicator {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: #b06d0f;
+  margin-left: 5px;
+  vertical-align: middle;
 }
 
 .tagged {

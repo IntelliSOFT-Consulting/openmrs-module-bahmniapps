@@ -3,13 +3,28 @@
         <div ng-repeat="cell in row" class="bed-layout-cells">
             {{getColorForTheTag(cell.bed)}}
             <div class="bed" ng-if="!cell.bed.bedId"></div>
-            <div class="bed {{ cell.bed.status }}" ng-class="{'highlight-bed': cell.bed.bedId == $root.selectedBedInfo.bed.bedId, 'highlight-old-bed': cell.bed.bedId == $root.bedDetails.bedId, 'tagged': cell.bed.bedTagMaps[0] !== undefined}"
+            <div class="bed {{ cell.bed.status }}" ng-class="{'highlight-bed': cell.bed.bedId == $root.selectedBedInfo.bed.bedId, 'highlight-old-bed': cell.bed.bedId == $root.bedDetails.bedId, 'tagged': cell.bed.bedTagMaps[0] !== undefined, 'reserved-pending': cell.bed.status !== 'OCCUPIED' && cell.bed.reservation.reservationStatus === 'PENDING_PAYMENT', 'reserved-paid': cell.bed.status !== 'OCCUPIED' && cell.bed.reservation.reservationStatus === 'PAID'}"
                  ng-if="cell.bed.bedId" ng-click="onSelectBed(cell.bed)" style="background:{{cell.bed.bedTagMaps[0].bedTag.color}};">
                 <div class="bed-space"></div>
                 <div class="bed-details">
                     <span>{{ cell.bed.bedNumber }}</span>
                     <div ng-if="cell.bed.status === 'OCCUPIED'">
                         <span> {{ cell.bed.patient.identifiers[0].identifier }}</span>
+                    </div>
+                </div>
+                <!-- A bed already OCCUPIED (patient actually admitted) has moved past "reserved" —
+                     don't show a stale reservation badge for it even if the billing-status row
+                     was never explicitly completed. -->
+                <div ng-if="cell.bed.reservation && cell.bed.status !== 'OCCUPIED'" class="bed-reservation-badge" bm-pop-over autoclose="true">
+                    <span bm-pop-over-trigger class="reservation-icon" ng-class="cell.bed.reservation.reservationStatus === 'PAID' ? 'reservation-paid' : 'reservation-pending'">
+                        <i class="fa" ng-class="isReservedByAnotherPatient(cell.bed) ? 'fa-lock' : 'fa-clock-o'"></i>
+                    </span>
+                    <div bm-pop-over-target class="tooltip reservation-tooltip">
+                        <div><strong>{{ cell.bed.reservation.patientName }}</strong></div>
+                        <div>{{ cell.bed.reservation.patientId }}</div>
+                        <div>{{ (cell.bed.reservation.reservationStatus === 'PAID' ? 'BED_RESERVATION_STATUS_PAID' : 'BED_RESERVATION_STATUS_PENDING') | translate }}</div>
+                        <div>{{ cell.bed.reservation.createdAt | date:'medium' }}</div>
+                        <a href="" ng-click="cancelReservation(cell.bed, $event)">{{ 'CANCEL_KEY' | translate }}</a>
                     </div>
                 </div>
             </div>

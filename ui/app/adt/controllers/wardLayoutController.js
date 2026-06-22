@@ -54,15 +54,13 @@ angular.module('bahmni.adt')
 
             var buildBedOrderPayload = function (bed) {
                 return {
-                    patientUuid:   $scope.patientUuid,
-                    visitUuid:     $scope.visitUuid,
-                    bedId:         String(bed.bed.bedId),
-                    bedNumber:     bed.bed.bedNumber,
-                    wardName:      $scope.ward.ward.name,
-                    amount:        null,
-                    currency:      'KES',
-                    paymentMethod: 'paying',
-                    modeOfPayment: null
+                    patientUuid:    $scope.patientUuid,
+                    visitUuid:      $scope.visitUuid,
+                    bedId:          bed.bed.bedId,
+                    bedNumber:      bed.bed.bedNumber,
+                    numberOfNights: 1,
+                    paymentMethod:  'paying',
+                    modeOfPayment:  null
                 };
             };
 
@@ -87,7 +85,7 @@ angular.module('bahmni.adt')
                         .then(function (orderResponse) {
                             console.log('[BedOrder] Bed order accepted by OpenMRS module:', orderResponse.data);
 
-                            return bedOrderService.getPaymentStatus($scope.patientUuid, payload.bedId);
+                            return bedOrderService.getPaymentStatus($scope.patientUuid, $scope.visitUuid);
                         })
                         .then(function (statusResponse) {
                             var status = statusResponse.data;

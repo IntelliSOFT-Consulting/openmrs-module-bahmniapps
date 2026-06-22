@@ -6,7 +6,8 @@ angular.module('bahmni.ipd')
             restrict: 'E',
             controller: "WardController",
             scope: {
-                ward: "="
+                ward: "=",
+                reservedRoomKeys: "="
             },
             templateUrl: "../bedmanagement/views/ward.html"
         };
