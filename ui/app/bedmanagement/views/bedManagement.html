@@ -62,9 +62,10 @@
                     ng-click="onSelectDepartment(option.ward)"
                     ng-class="{'selected': option.ward.isSelected}"
             >{{ option.ward.name }}
+                <span ng-if="isWardReserved(option.ward.uuid)" class="ward-reservation-indicator" title="{{'BED_RESERVATION_IN_WARD_KEY' | translate}}"></span>
             </button>
         </div>
     </div>
-    <ward ward="ward" ng-if="departmentSelected"></ward>
+    <ward ward="ward" reserved-room-keys="reservedRoomKeys" ng-if="departmentSelected"></ward>
 </div>
 </div>

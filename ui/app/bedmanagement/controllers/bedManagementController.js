@@ -1,8 +1,8 @@
 'use strict';
 
 angular.module('bahmni.ipd')
-    .controller('BedManagementController', ['$scope', '$rootScope', '$stateParams', '$state', 'spinner', 'wardService', 'bedManagementService', 'visitService', 'messagingService', 'appService', 'ngDialog',
-        function ($scope, $rootScope, $stateParams, $state, spinner, wardService, bedManagementService, visitService, messagingService, appService, ngDialog) {
+    .controller('BedManagementController', ['$scope', '$rootScope', '$stateParams', '$state', 'spinner', 'wardService', 'bedManagementService', 'visitService', 'messagingService', 'appService', 'ngDialog', 'bedQuotationService',
+        function ($scope, $rootScope, $stateParams, $state, spinner, wardService, bedManagementService, visitService, messagingService, appService, ngDialog, bedQuotationService) {
             $scope.wards = null;
             $scope.ward = {};
             $scope.editTagsPrivilege = Bahmni.IPD.Constants.editTagsPrivilege;
@@ -35,6 +35,7 @@ angular.module('bahmni.ipd')
                     resetDepartments();
                     resetBedInfo();
                 });
+                refreshReservationLocations();
             };
 
             var loadAllWards = function () {
@@ -42,6 +43,58 @@ angular.module('bahmni.ipd')
                     $scope.wards = wardsList.results;
                 }));
             };
+
+            // Ward-level / room-level "your patient is reserved/admitted in here" indicators, so a
+            // clinician doesn't have to open every ward to find this one patient's bed. Scoped to
+            // the currently selected patient only — NOT a global "anyone has a reservation here"
+            // view, which would surface other patients' reservations as noise (or a privacy leak)
+            // on a screen that's otherwise entirely about the one patient currently selected.
+            $scope.reservedWardUuids = {};
+            $scope.reservedRoomKeys = {};
+
+            var roomKey = function (wardUuid, roomName) {
+                return wardUuid + '|' + roomName;
+            };
+
+            $scope.isWardReserved = function (wardUuid) {
+                return !!$scope.reservedWardUuids[wardUuid];
+            };
+
+            $scope.isRoomReserved = function (wardUuid, roomName) {
+                return !!$scope.reservedRoomKeys[roomKey(wardUuid, roomName)];
+            };
+
+            var refreshReservationLocations = function () {
+                var patientId = $rootScope.patient && $rootScope.patient.identifier;
+                if (!patientId) {
+                    $scope.reservedWardUuids = {};
+                    $scope.reservedRoomKeys = {};
+                    return;
+                }
+                bedQuotationService.getReservationLocations(patientId).then(function (response) {
+                    var data = response.data || {};
+                    var wardUuids = {};
+                    _.each(data.wardUuids, function (uuid) {
+                        wardUuids[uuid] = true;
+                    });
+                    var roomKeys = {};
+                    _.each(data.rooms, function (room) {
+                        roomKeys[roomKey(room.wardUuid, room.roomName)] = true;
+                    });
+                    // Also flag the ward/room this patient is *already admitted* to, if any —
+                    // covers "or is admitted to that ward", distinct from "has reserved a bed".
+                    if ($rootScope.bedDetails && $rootScope.bedDetails.wardUuid) {
+                        wardUuids[$rootScope.bedDetails.wardUuid] = true;
+                        if ($rootScope.bedDetails.physicalLocationName) {
+                            roomKeys[roomKey($rootScope.bedDetails.wardUuid, $rootScope.bedDetails.physicalLocationName)] = true;
+                        }
+                    }
+                    $scope.reservedWardUuids = wardUuids;
+                    $scope.reservedRoomKeys = roomKeys;
+                });
+            };
+
+            $scope.$on("event:bedReservationChanged", refreshReservationLocations);
 
             var mapRoomInfo = function (roomsInfo) {
                 var mappedRooms = [];
@@ -86,6 +139,48 @@ angular.module('bahmni.ipd')
                 });
             };
 
+            // Collects every bedId currently rendered in $scope.ward.rooms (a 2D grid per room —
+            // see bedManagementService.createLayoutGrid) so reservation status can be fetched for
+            // all of them in one call rather than one request per bed.
+            var collectBedIds = function (rooms) {
+                var bedIds = [];
+                _.each(rooms, function (room) {
+                    _.each(room.beds, function (row) {
+                        _.each(row, function (cell) {
+                            if (cell.bed && cell.bed.bedId) {
+                                bedIds.push(cell.bed.bedId);
+                            }
+                        });
+                    });
+                });
+                return bedIds;
+            };
+
+            var refreshReservations = function () {
+                if (!$scope.ward || !$scope.ward.rooms) {
+                    return;
+                }
+                var bedIds = collectBedIds($scope.ward.rooms);
+                var request = bedQuotationService.getReservationsForBeds(bedIds);
+                if (!request) {
+                    return;
+                }
+                request.then(function (response) {
+                    var reservationsByBedId = _.keyBy(response.data.reservations, 'bedId');
+                    _.each($scope.ward.rooms, function (room) {
+                        _.each(room.beds, function (row) {
+                            _.each(row, function (cell) {
+                                if (cell.bed) {
+                                    cell.bed.reservation = cell.bed.bedId ? reservationsByBedId[cell.bed.bedId] : undefined;
+                                }
+                            });
+                        });
+                    });
+                });
+            };
+
+            $scope.$on("event:bedReservationChanged", refreshReservations);
+
             var loadBedsInfoForWard = function (department) {
                 return wardService.bedsForWard(department.uuid).then(function (response) {
                     var wardDetails = getWardDetails(department);
@@ -102,6 +197,7 @@ angular.module('bahmni.ipd')
                     $rootScope.selectedBedInfo.wardUuid = department.uuid;
                     selectCurrentDepartment(department);
                     $scope.$broadcast("event:departmentChanged");
+                    refreshReservations();
                 });
             };
 

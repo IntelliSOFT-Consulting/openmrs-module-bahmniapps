@@ -1,0 +1,64 @@
+<div class="revise-refill-modal-wrapper discharge-wrapper" aria-labelledby="dialog-label">
+    <style type="text/css">
+        .opd-header-wrapper {
+            z-index: 10000 !important;
+        }
+    </style>
+    <div class="ngdialog-close clearfix"></div>
+    <div class="clearfix">
+        <h4> {{'SUBMIT_QUOTATION_KEY' | translate}} </h4>
+    </div>
+    <div class="transfer-section discharge-bed-section">
+        <p class="patient-attributes dialog-patient-name">
+            <label for="quotation-patient-name">{{'PATIENT_NAME_KEY' | translate}}</label>
+            <span id="quotation-patient-name">{{$root.patient.name}}</span>
+            <label for="quotation-patient-id">{{'PATIENT_ID_KEY' | translate}}</label>
+            <span id="quotation-patient-id">{{$root.patient.identifier}}</span>
+        </p>
+
+        <p class="transfer-container">
+            <b>{{'ADMIT_TO_KEY' | translate}}</b>
+            <span>{{$root.selectedBedInfo.wardName}},</span>
+            <span>{{$root.selectedBedInfo.roomName}},</span>
+            <span>#{{$root.selectedBedInfo.bed.bedNumber}}</span>
+        </p>
+    </div>
+
+    <article class="form-field">
+        <div class="field-attribute">
+            <label for="quotation-nights">{{'NUMBER_OF_NIGHTS_KEY' | translate}}</label>
+        </div>
+        <div class="field-value">
+            <input id="quotation-nights" type="number" min="1" step="1" ng-model="quotation.numberOfNights" required autofocus />
+        </div>
+    </article>
+
+    <div ng-if="quotationNeedsPaymentFields">
+        <article class="form-field">
+            <div class="field-attribute">
+                <label for="quotation-payment-method">{{'BED_QUOTATION_PAYMENT_METHOD_LABEL' | translate}}</label>
+            </div>
+            <div class="field-value">
+                <input id="quotation-payment-method" type="text" ng-model="quotation.paymentMethod" required />
+            </div>
+        </article>
+        <article class="form-field">
+            <div class="field-attribute">
+                <label for="quotation-mode-of-payment">{{'BED_QUOTATION_MODE_OF_PAYMENT_LABEL' | translate}}</label>
+            </div>
+            <div class="field-value">
+                <input id="quotation-mode-of-payment" type="text" ng-model="quotation.modeOfPayment" required />
+            </div>
+        </article>
+    </div>
+
+    <div class="dialog-button-group ipd-button-group">
+        <button id="modal-quotation-submit-button" class="secondary-button" ng-click="submitQuotationConfirmation()"
+                ng-disabled="!quotation.numberOfNights || quotation.numberOfNights < 1 || (quotationNeedsPaymentFields && (!quotation.paymentMethod || !quotation.modeOfPayment))">
+            {{'SUBMIT_QUOTATION_KEY' | translate}}
+        </button>
+        <button id="modal-quotation-cancel-button" class="secondary-button" ng-click="cancelConfirmationDialog()">{{'CANCEL_KEY' | translate}}</button>
+    </div>
+
+    <span class="ngdialog-end"></span>
+</div>

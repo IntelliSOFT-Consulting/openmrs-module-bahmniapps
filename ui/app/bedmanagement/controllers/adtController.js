@@ -4,9 +4,11 @@ angular.module('bahmni.ipd')
     .controller('AdtController', ['$scope', '$q', '$rootScope', 'spinner', 'dispositionService',
         'encounterService', 'bedService', 'appService', 'visitService', '$location', '$window', 'sessionService',
         'messagingService', '$anchorScroll', '$stateParams', 'ngDialog', '$filter', '$state', '$translate',
+        'bedQuotationService', 'consultationPaymentGateService', 'observationsService',
         function ($scope, $q, $rootScope, spinner, dispositionService, encounterService, bedService,
                   appService, visitService, $location, $window, sessionService, messagingService, $anchorScroll,
-                  $stateParams, ngDialog, $filter, $state, $translate) {
+                  $stateParams, ngDialog, $filter, $state, $translate,
+                  bedQuotationService, consultationPaymentGateService, observationsService) {
             var actionConfigs = {};
             var encounterConfig = $rootScope.encounterConfig;
             var locationUuid = sessionService.getLoginLocationUuid();
@@ -112,6 +114,25 @@ angular.module('bahmni.ipd')
                 return $state.current.name === "bedManagement.patient" && !$scope.editMode;
             };
 
+            // Bed payment gate — same mechanism as the CONSULTATION queue gate
+            // (consultationPaymentGateService), just for serviceType 'BED'. Patient/visit scoped,
+            // not bed-scoped: a patient can only meaningfully hold one active bed quotation per
+            // visit, so "is BED paid for this visit" is the right granularity, matching how the
+            // CONSULTATION gate already works.
+            $scope.bedPaymentConfirmed = false;
+
+            var checkBedPaymentStatus = function () {
+                if (!$scope.patient || !$scope.visitSummary || !$scope.visitSummary.uuid) {
+                    $scope.bedPaymentConfirmed = false;
+                    return $q.when(false);
+                }
+                return consultationPaymentGateService.isServicePaid($scope.patient.uuid, $scope.visitSummary.uuid, 'BED')
+                    .then(function (paid) {
+                        $scope.bedPaymentConfirmed = paid;
+                        return paid;
+                    });
+            };
+
             var init = function () {
                 initializeActionConfig();
                 $scope.encounterConfig = $scope.$parent.encounterConfig;
@@ -128,6 +149,7 @@ angular.module('bahmni.ipd')
                             $scope.currentVisitType = $scope.visitSummary.visitType;
                         }
                     }
+                    checkBedPaymentStatus();
                 });
             };
 
@@ -189,6 +211,14 @@ angular.module('bahmni.ipd')
                     bed.status = "OCCUPIED";
                     $scope.$emit("event:patientAssignedToBed", $rootScope.selectedBedInfo.bed);
                     messagingService.showMessage("info", $translate.instant("BED") + " " + bed.bedNumber + " " + $translate.instant("IS_SUCCESSFULLY_ASSIGNED_MESSAGE"));
+                    // The bed has moved past "reserved, awaiting admission" now that the patient is
+                    // actually admitted — release the reservation record so the ward/room-level
+                    // indicators don't keep pointing at a bed that's already done. Best-effort:
+                    // there may be no reservation to clear (e.g. admitted without ever using
+                    // Submit Quotation), so a failure here is expected and must not be surfaced.
+                    bedQuotationService.cancelReservation(bed.bedId, 'Patient admitted').finally(function () {
+                        $scope.$emit("event:bedReservationChanged");
+                    });
                 }));
             };
 
@@ -260,7 +290,129 @@ angular.module('bahmni.ipd')
             spinner.forPromise(init());
 
             $scope.disableAdmitButton = function () {
+                return (!($rootScope.patient && !$rootScope.bedDetails)) || $scope.buttonClicked || !$scope.bedPaymentConfirmed;
+            };
+
+            $scope.disableSubmitQuotationButton = function () {
                 return (!($rootScope.patient && !$rootScope.bedDetails)) || $scope.buttonClicked;
+            };
+
+            // ---------- Submit Quotation (raises the bed-nights sale order in Odoo) ----------
+
+            // A coded-concept obs (e.g. "Payment Method"/"Mode of Payment") returns the full
+            // concept-answer object as .value, not a plain string — same extraction logic as
+            // registration/controllers/visitController.js's submitFeeToOdoo flow.
+            var extractObsValue = function (obs) {
+                if (!obs) { return null; }
+                var val = obs.value;
+                if (!val) { return null; }
+                if (typeof val !== 'object') { return val; }
+                var nameVal = val.name || val.display;
+                if (nameVal && typeof nameVal === 'object') {
+                    return nameVal.name || nameVal.display || null;
+                }
+                return nameVal || null;
+            };
+
+            var buildQuotationPayload = function () {
+                var bed = $rootScope.selectedBedInfo.bed;
+                var now = new Date().toISOString();
+                return {
+                    patientId: $scope.patient.identifier,
+                    patientUuid: $scope.patient.uuid,
+                    visitUuid: $scope.visitSummary.uuid,
+                    bedId: bed.bedId,
+                    bedNumber: bed.bedNumber,
+                    wardUuid: $rootScope.selectedBedInfo.wardUuid,
+                    roomName: $rootScope.selectedBedInfo.roomName,
+                    numberOfNights: $scope.quotation.numberOfNights,
+                    paymentMethod: $scope.quotation.paymentMethod,
+                    modeOfPayment: $scope.quotation.modeOfPayment,
+                    voided: false,
+                    dateCreated: now,
+                    dateChanged: now,
+                    createdBy: $rootScope.currentUser && $rootScope.currentUser.username
+                };
+            };
+
+            var openQuotationDialog = function () {
+                ngDialog.openConfirm({
+                    template: 'views/submitQuotationConfirmation.html',
+                    scope: $scope,
+                    closeByEscape: true,
+                    className: "ngdialog-theme-default ng-dialog-adt-popUp",
+                    preCloseCallback: unsetButtonClicked
+                });
+            };
+
+            $scope.submitQuotation = function () {
+                setButtonClicked();
+                if (angular.isUndefined($rootScope.selectedBedInfo.bed)) {
+                    messagingService.showMessage("error", "SELECT_BED_TO_ADMIT_PATIENT_DEFAULT_MESSAGE");
+                    unsetButtonClicked();
+                    return;
+                }
+                if (!$scope.visitSummary || !$scope.visitSummary.uuid) {
+                    messagingService.showMessage("error", "NO_ACTIVE_VISIT_MESSAGE");
+                    unsetButtonClicked();
+                    return;
+                }
+
+                $scope.quotation = {numberOfNights: null, paymentMethod: null, modeOfPayment: null};
+
+                spinner.forPromise(
+                    observationsService.fetch(null, ['Payment Method', 'Mode of Payment'], 'latest', null, $scope.visitSummary.uuid)
+                        .then(function (response) {
+                            var obs = response.data || [];
+                            var paymentMethodObs = _.find(obs, function (o) {
+                                return o.concept && o.concept.name === 'Payment Method';
+                            });
+                            var modeOfPaymentObs = _.find(obs, function (o) {
+                                return o.concept && o.concept.name === 'Mode of Payment';
+                            });
+                            var paymentMethod = extractObsValue(paymentMethodObs);
+                            var modeOfPayment = extractObsValue(modeOfPaymentObs);
+                            // Normalise to lowercase so Odoo's case-sensitive validation passes
+                            // (e.g. "Cash" -> "cash") — same as the registration consultation-fee flow.
+                            if (typeof paymentMethod === 'string') { paymentMethod = paymentMethod.toLowerCase(); }
+                            if (typeof modeOfPayment === 'string') { modeOfPayment = modeOfPayment.toLowerCase(); }
+                            $scope.quotation.paymentMethod = paymentMethod;
+                            $scope.quotation.modeOfPayment = modeOfPayment;
+                            // Only ask the user for these if we genuinely found nothing recorded at
+                            // registration — the popup otherwise only asks for number of nights,
+                            // per spec.
+                            $scope.quotationNeedsPaymentFields = !$scope.quotation.paymentMethod || !$scope.quotation.modeOfPayment;
+                            openQuotationDialog();
+                        }, function () {
+                            // Obs lookup failing shouldn't block raising a quotation — just fall
+                            // back to asking for the payment fields in the popup.
+                            $scope.quotationNeedsPaymentFields = true;
+                            openQuotationDialog();
+                        })
+                );
+            };
+
+            $scope.submitQuotationConfirmation = function () {
+                var bed = $rootScope.selectedBedInfo.bed;
+                var payload = buildQuotationPayload();
+
+                spinner.forPromise(
+                    bedQuotationService.submitQuotation(payload).then(function (response) {
+                        var data = response.data;
+                        ngDialog.close();
+                        unsetButtonClicked();
+                        if (data && data.status === 'success') {
+                            messagingService.showMessage('info', bed.bedNumber + ' ' + $translate.instant("BED_QUOTATION_SUBMITTED_MESSAGE"));
+                            $scope.$emit("event:bedReservationChanged");
+                            checkBedPaymentStatus();
+                        } else {
+                            messagingService.showMessage('error', (data && data.message) || $translate.instant("BED_QUOTATION_FAILED_MESSAGE"));
+                        }
+                    }, function () {
+                        unsetButtonClicked();
+                        messagingService.showMessage('error', $translate.instant("BED_QUOTATION_FAILED_MESSAGE"));
+                    })
+                );
             };
 
             $scope.disableTransfer = function () {
