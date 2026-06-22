@@ -73,6 +73,7 @@
                      | {{newTreatment.additionalInstructions}}
                 </div>
                 <div ng-if="newTreatment.getQuantityWithUnit()"> | {{newTreatment.getQuantityWithUnit()}}</div>
+                <div ng-if="getDrugStockWarning(newTreatment)" ng-bind-html="getDrugStockWarning(newTreatment)"></div>
                 <div>
                     <span ng-show="allMedicinesInPrescriptionAvailableForIPD && newTreatment.careSetting==='INPATIENT'"> | {{ ::'IPD_BUTTON' | translate}}</span>
                     <span ng-show="allMedicinesInPrescriptionAvailableForIPD && newTreatment.careSetting==='OUTPATIENT'"> | {{ ::'OPD_BUTTON' | translate}}</span>

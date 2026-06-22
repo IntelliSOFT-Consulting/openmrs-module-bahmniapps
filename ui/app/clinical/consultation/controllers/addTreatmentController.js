@@ -442,6 +442,20 @@ angular.module('bahmni.clinical')
                     $scope.popupActive = true;
                     return;
                 }
+
+                if (newDrugOrder.drug && newDrugOrder.drug.uuid) {
+                    var stockInfo = stockService.getCached(newDrugOrder.drug.uuid);
+                    if (stockInfo && !stockInfo.error) {
+                        if (!stockInfo.available) {
+                            messagingService.showMessage("warning", newDrugOrder.drug.name + ' ' + $translate.instant("DRUG_OUT_OF_STOCK_WARNING"));
+                        } else if (newDrugOrder.quantity && newDrugOrder.quantity > stockInfo.quantityAvailable) {
+                            messagingService.showMessage("info", newDrugOrder.drug.name + ' '
+                                + $translate.instant("DRUG_QUANTITY_EXCEEDS_STOCK_WARNING") + ' '
+                                + stockInfo.quantityAvailable + ' ' + (stockInfo.unit || 'Units') + '.');
+                        }
+                    }
+                }
+
                 if (!$scope.treatment.quantity) {
                     $scope.treatment.quantity = 0;
                 }
@@ -621,6 +635,10 @@ angular.module('bahmni.clinical')
                 return results;
             };
 
+            $scope.getDrugStockLabel = function (drug) {
+                return stockService.getStockLabelForDrug(drug);
+            };
+
             (function () {
                 var selectedItem;
                 $scope.onSelect = function (item) {
@@ -642,6 +660,7 @@ angular.module('bahmni.clinical')
                             uuid: selectedItem.drug.uuid,
                             drugReferenceMaps: selectedItem.drug.drugReferenceMaps
                         });
+                        stockService.fetchStock(selectedItem.drug.uuid);
                         selectedItem = null;
                         return;
                     }

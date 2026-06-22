@@ -2,7 +2,7 @@
 
 angular.module('bahmni.clinical')
     .directive('newDrugOrders', ['messagingService', function (messagingService) {
-        var controller = function ($scope, $rootScope, appService) {
+        var controller = function ($scope, $rootScope, appService, stockService) {
             var allMedicinesConfig = appService.getAppDescriptor().getConfigValue("allMedicinesInPrescriptionAvailableForIPD");
             $scope.allMedicinesInPrescriptionAvailableForIPD = allMedicinesConfig !== null ? allMedicinesConfig : true;
             if (!$scope.allMedicinesInPrescriptionAvailableForIPD) {
@@ -98,6 +98,10 @@ angular.module('bahmni.clinical')
                 return alerts.some(function (alert) {
                     return alert.isActive;
                 });
+            };
+
+            $scope.getDrugStockWarning = function (treatment) {
+                return stockService.getStockWarningForTreatment(treatment);
             };
         };
         return {

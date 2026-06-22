@@ -18,6 +18,21 @@
 
     <ul>
         <li>
+            <div class="message-container warning-message-container" ng-if="isWarningMessagePresent()">
+                <div class="message-icon">
+                    <i class="fa fa-exclamation-triangle"></i>
+                </div>
+                <div class="message-text">
+                    <div ng-repeat="warning in messages.warning">
+                        {{warning.value | translate}}
+                    </div>
+                </div>
+            </div>
+        </li>
+    </ul>
+
+    <ul>
+        <li>
             <div class="message-container error-message-container" ng-if="isErrorMessagePresent()">
                 <div class="message-text">
                     <div class="types-for-errors error-message">

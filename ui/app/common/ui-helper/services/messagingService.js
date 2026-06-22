@@ -2,7 +2,7 @@
 
 angular.module('bahmni.common.uiHelper')
     .service('messagingService', ['$rootScope', '$timeout', function ($rootScope, $timeout) {
-        this.messages = {error: [], info: [], alert: []};
+        this.messages = {error: [], info: [], alert: [], warning: []};
         var self = this;
 
         $rootScope.$on('event:serverError', function (event, errorMessage) {
@@ -19,6 +19,8 @@ angular.module('bahmni.common.uiHelper')
                 }
             } else if (level == 'info') {
                 this.createTimeout('info', 4000);
+            } else if (level == 'warning') {
+                this.createTimeout('warning', 5000);
             }
 
             var index = _.findIndex(this.messages[level], function (msg) {
@@ -47,5 +49,6 @@ angular.module('bahmni.common.uiHelper')
             self.messages["error"] = [];
             self.messages["info"] = [];
             self.messages["alert"] = [];
+            self.messages["warning"] = [];
         };
     }]);
