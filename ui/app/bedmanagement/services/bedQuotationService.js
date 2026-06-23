@@ -39,10 +39,21 @@ angular.module('bahmni.ipd')
             });
         };
 
+        // The single bed (if any) this patient currently holds an active reservation for, across
+        // all wards — used to detect a clinician selecting a different bed for a patient who
+        // already paid for a specific one.
+        var getActivePatientReservation = function (patientId) {
+            return $http.get(BASE + '/reservations/patient-active', {
+                params: {patientId: patientId},
+                withCredentials: true
+            });
+        };
+
         return {
             submitQuotation: submitQuotation,
             getReservationsForBeds: getReservationsForBeds,
             getReservationLocations: getReservationLocations,
-            cancelReservation: cancelReservation
+            cancelReservation: cancelReservation,
+            getActivePatientReservation: getActivePatientReservation
         };
     }]);

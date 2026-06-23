@@ -1,0 +1,42 @@
+<div class="revise-refill-modal-wrapper" aria-labelledby="dialog-label">
+    <style type="text/css">
+        .opd-header-wrapper {
+            z-index: 10000 !important;
+        }
+    </style>
+    <div class="ngdialog-close clearfix"></div>
+    <div class="clearfix">
+        <h4>{{'BED_PAID_MISMATCH_TITLE_KEY' | translate}}</h4>
+    </div>
+
+    <div class="transfer-section transfer-bed-section">
+        <p class="transfer-container">
+            <b>{{'BED_PAID_MISMATCH_PREVIOUS_BED_KEY' | translate}}</b>
+            <span>#{{pendingBedSwitch.existingReservation.bedNumber}}</span>
+        </p>
+        <p class="ipd-transfer-container"><i class="fa fa-long-arrow-right"></i></p>
+        <p class="transfer-container">
+            <b>{{'BED_PAID_MISMATCH_NEW_BED_KEY' | translate}}</b>
+            <span>#{{pendingBedSwitch.newBed.bedNumber}}</span>
+        </p>
+    </div>
+
+    <div class="drug-details">
+        <p>{{'BED_PAID_MISMATCH_MESSAGE_KEY' | translate}}</p>
+    </div>
+
+    <div class="dialog-button-group ipd-button-group">
+        <button id="modal-bed-switch-yes-button" class="secondary-button" ng-click="confirmBedSwitchAndRebook()">
+            {{'BED_PAID_MISMATCH_YES_KEY' | translate}}
+        </button>
+        <button id="modal-bed-switch-cancel-reservation-button" class="secondary-button" ng-click="cancelPaidBedReservation()">
+            {{'CANCEL_RESERVATION_KEY' | translate}}
+        </button>
+        <button id="modal-bed-switch-keep-button" class="secondary-button" ng-click="cancelConfirmationDialog()">
+            {{'BED_PAID_MISMATCH_KEEP_CURRENT_KEY' | translate}}
+        </button>
+    </div>
+    <p class="bed-paid-mismatch-note">{{'BED_PAID_MISMATCH_NOTE_KEY' | translate}}</p>
+
+    <span class="ngdialog-end"></span>
+</div>

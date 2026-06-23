@@ -133,6 +133,25 @@ angular.module('bahmni.ipd')
                     });
             };
 
+            // The single bed (if any) this patient currently holds an active reservation for —
+            // shared via $rootScope so RoomGridController (a sibling controller on this same
+            // admission screen) can detect "clinician selected a different bed than the one
+            // already paid for" without a per-click HTTP round trip.
+            var refreshPatientActiveBedReservation = function () {
+                if (!$scope.patient || !$scope.patient.identifier) {
+                    $rootScope.patientActiveBedReservation = null;
+                    return $q.when(null);
+                }
+                return bedQuotationService.getActivePatientReservation($scope.patient.identifier).then(function (response) {
+                    var data = response.data;
+                    $rootScope.patientActiveBedReservation = (data && data.found) ? data : null;
+                    return $rootScope.patientActiveBedReservation;
+                }, function () {
+                    $rootScope.patientActiveBedReservation = null;
+                    return null;
+                });
+            };
+
             var init = function () {
                 initializeActionConfig();
                 $scope.encounterConfig = $scope.$parent.encounterConfig;
@@ -150,8 +169,14 @@ angular.module('bahmni.ipd')
                         }
                     }
                     checkBedPaymentStatus();
+                    refreshPatientActiveBedReservation();
                 });
             };
+
+            $scope.$on("event:bedReservationChanged", function () {
+                checkBedPaymentStatus();
+                refreshPatientActiveBedReservation();
+            });
 
             var getEncounterData = function (encounterTypeUuid, visitTypeUuid) {
                 var encounterData = {};
@@ -411,6 +436,75 @@ angular.module('bahmni.ipd')
                     }, function () {
                         unsetButtonClicked();
                         messagingService.showMessage('error', $translate.instant("BED_QUOTATION_FAILED_MESSAGE"));
+                    })
+                );
+            };
+
+            // ---------- Paid-bed mismatch (clinician selects a different bed than the one the
+            // patient already paid for) ----------
+
+            $scope.$on("event:bedSelectedWithPaidMismatch", function (event, payload) {
+                $scope.pendingBedSwitch = payload; // {newBed, existingReservation}
+                setButtonClicked();
+                ngDialog.openConfirm({
+                    template: 'views/bedSwitchConfirmation.html',
+                    scope: $scope,
+                    closeByEscape: true,
+                    className: "ngdialog-theme-default ng-dialog-adt-popUp",
+                    preCloseCallback: function () {
+                        $scope.pendingBedSwitch = null;
+                        unsetButtonClicked();
+                    }
+                });
+            });
+
+            // "Yes" — cancel the previous (paid) bed booking, select the newly clicked bed, and
+            // automatically re-run the standard Submit Quotation flow for it.
+            $scope.confirmBedSwitchAndRebook = function () {
+                var pending = $scope.pendingBedSwitch;
+                ngDialog.close();
+                if (!pending) {
+                    unsetButtonClicked();
+                    return;
+                }
+                var oldBed = pending.existingReservation;
+                spinner.forPromise(
+                    bedQuotationService.cancelReservation(oldBed.bedId, 'Bed switched after payment — clinician confirmed').then(function () {
+                        messagingService.showMessage('info', (oldBed.bedNumber || '') + ' ' + $translate.instant("BED_RESERVATION_CANCELLED_MESSAGE"));
+                        $rootScope.selectedBedInfo.bed = pending.newBed;
+                        $scope.pendingBedSwitch = null;
+                        $scope.$emit("event:bedReservationChanged");
+                        unsetButtonClicked();
+                        $scope.submitQuotation();
+                    }, function () {
+                        $scope.pendingBedSwitch = null;
+                        unsetButtonClicked();
+                        messagingService.showMessage('error', $translate.instant("BED_RESERVATION_CANCEL_FAILED_MESSAGE"));
+                    })
+                );
+            };
+
+            // "Cancel the reservation" — releases the previously paid bed without selecting the
+            // newly clicked one. The patient keeps no active bed reservation until the clinician
+            // explicitly picks a bed again.
+            $scope.cancelPaidBedReservation = function () {
+                var pending = $scope.pendingBedSwitch;
+                ngDialog.close();
+                if (!pending) {
+                    unsetButtonClicked();
+                    return;
+                }
+                var oldBed = pending.existingReservation;
+                spinner.forPromise(
+                    bedQuotationService.cancelReservation(oldBed.bedId, 'Cancelled by clinician — bed was already paid for').then(function () {
+                        messagingService.showMessage('warning', (oldBed.bedNumber || '') + ' ' + $translate.instant("BED_RESERVATION_CANCELLED_BUT_PAID_MESSAGE"));
+                        $scope.pendingBedSwitch = null;
+                        $scope.$emit("event:bedReservationChanged");
+                        unsetButtonClicked();
+                    }, function () {
+                        $scope.pendingBedSwitch = null;
+                        unsetButtonClicked();
+                        messagingService.showMessage('error', $translate.instant("BED_RESERVATION_CANCEL_FAILED_MESSAGE"));
                     })
                 );
             };
