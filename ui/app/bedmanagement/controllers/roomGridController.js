@@ -34,11 +34,26 @@ angular.module('bahmni.ipd')
                 return bed.reservation.patientId !== currentPatientId;
             };
 
-            $scope.onSelectBed = function (bed) {
-                if ($scope.isReservedByAnotherPatient(bed)) {
-                    messagingService.showMessage("warning", $translate.instant("BED_ALREADY_RESERVED_MESSAGE"));
-                    return;
+            // Detects "this patient already PAID for a different bed" — $rootScope
+            // .patientActiveBedReservation is refreshed by AdtController (the ADT/admission screen
+            // sharing this $rootScope) whenever the selected patient or their reservation changes.
+            // Returns the existing reservation record on a mismatch, null otherwise (free bed, no
+            // reservation yet, not actually paid, or it's the same bed already paid for).
+            var getPaidBedMismatch = function (bed) {
+                var reservation = $rootScope.patientActiveBedReservation;
+                if (!reservation || !bed.bedId) {
+                    return null;
                 }
+                if (reservation.paymentStatus !== 'PAID' && reservation.paymentStatus !== 'WAIVED') {
+                    return null;
+                }
+                if (reservation.bedId === bed.bedId) {
+                    return null;
+                }
+                return reservation;
+            };
+
+            var selectBed = function (bed) {
                 if ($state.current.name === "bedManagement.bed" || $state.current.name === "bedManagement") {
                     if (bed.status === "AVAILABLE") {
                         $rootScope.patient = undefined;
@@ -55,13 +70,34 @@ angular.module('bahmni.ipd')
                 }
             };
 
+            $scope.onSelectBed = function (bed) {
+                if ($scope.isReservedByAnotherPatient(bed)) {
+                    messagingService.showMessage("warning", $translate.instant("BED_ALREADY_RESERVED_MESSAGE"));
+                    return;
+                }
+                // The paid-bed-mismatch workflow only applies on the admission screen, where a
+                // specific patient is being booked into a bed — not the general bed board.
+                if ($state.current.name === "bedManagement.patient") {
+                    var mismatch = getPaidBedMismatch(bed);
+                    if (mismatch) {
+                        // AdtController (the admit/quotation panel) is a SIBLING directive with its
+                        // own isolated scope, not an ancestor of this one — $scope.$emit only
+                        // bubbles to ancestors, so it would never reach AdtController's $on
+                        // listener. $rootScope.$broadcast reaches every scope in the app instead.
+                        $rootScope.$broadcast("event:bedSelectedWithPaidMismatch", {newBed: bed, existingReservation: mismatch});
+                        return;
+                    }
+                }
+                selectBed(bed);
+            };
+
             $scope.cancelReservation = function (bed, $event) {
                 if ($event) {
                     $event.stopPropagation();
                 }
                 bedQuotationService.cancelReservation(bed.bedId, 'Cancelled from ward bed grid').then(function () {
                     messagingService.showMessage("info", $translate.instant("BED_RESERVATION_CANCELLED_MESSAGE"));
-                    $scope.$emit("event:bedReservationChanged");
+                    $rootScope.$broadcast("event:bedReservationChanged");
                 }, function () {
                     messagingService.showMessage("error", $translate.instant("BED_RESERVATION_CANCEL_FAILED_MESSAGE"));
                 });

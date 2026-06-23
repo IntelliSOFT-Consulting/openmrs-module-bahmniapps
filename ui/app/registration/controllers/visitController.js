@@ -201,6 +201,16 @@ angular.module('bahmni.registration')
                             var d = response.data || {};
                             console.log('[ConsultationFee] Odoo connector response:', d);
 
+                            if (d.errorType === 'consultation_already_charged') {
+                                return showOdooPopup({
+                                    type:      'warning',
+                                    icon:      'ℹ',
+                                    title:     'Consultation Fee',
+                                    message:   d.message || 'Consultation fee for the current visit has already been paid.',
+                                    details:   [],
+                                    showRetry: false
+                                }).then(function () { deferred.resolve(); });
+                            }
                             if (d.errorType === 'patient_sync_failed') {
                                 return showFailurePopup('Patient Sync Failed',
                                     d.message || 'The patient record failed to synchronize to Odoo.');
