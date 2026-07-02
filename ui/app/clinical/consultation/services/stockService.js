@@ -2,7 +2,6 @@
 
 angular.module('bahmni.clinical')
     .factory('stockService', ['$http', '$q', '$timeout', '$rootScope', function ($http, $q, $timeout, $rootScope) {
-
         var CACHE_TTL_MS = 120000; // 2 minutes
         var FETCH_TIMEOUT_MS = 3000; // 3 seconds
         var cache = {};

@@ -1,0 +1,137 @@
+.odoo-popup-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.55);
+  z-index: 99999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.odoo-popup-modal {
+  background: #fff;
+  border-radius: 6px;
+  width: 440px;
+  max-width: 92vw;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.28);
+  overflow: hidden;
+  animation: odooPopupIn 0.18s ease;
+}
+
+@keyframes odooPopupIn {
+  from { transform: translateY(-18px); opacity: 0; }
+  to   { transform: translateY(0);     opacity: 1; }
+}
+
+.odoo-popup-header {
+  padding: 16px 20px;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.odoo-popup-header--success { background: #2e7d32; }
+.odoo-popup-header--warning { background: #e65100; }
+.odoo-popup-header--error   { background: #c62828; }
+.odoo-popup-header--loading { background: #1565c0; }
+
+.odoo-popup-icon {
+  font-size: 20px;
+  line-height: 1;
+}
+
+.odoo-popup-body {
+  padding: 20px 22px;
+  font-size: 14px;
+  color: #333;
+}
+
+.odoo-popup-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.odoo-popup-table tr {
+  border-bottom: 1px solid #f2f2f2;
+}
+
+.odoo-popup-table tr:last-child {
+  border-bottom: none;
+}
+
+.odoo-popup-label {
+  padding: 9px 14px 9px 0;
+  color: #666;
+  font-weight: 400;
+  width: 42%;
+  vertical-align: top;
+}
+
+.odoo-popup-value {
+  padding: 9px 0;
+  font-weight: 600;
+  color: #1a1a1a;
+}
+
+.odoo-popup-message {
+  margin: 0;
+  line-height: 1.5;
+  color: #555;
+}
+
+.odoo-popup-footer {
+  padding: 12px 22px;
+  text-align: right;
+  background: #f7f7f7;
+  border-top: 1px solid #ebebeb;
+}
+
+.odoo-popup-ok-btn {
+  min-width: 88px;
+  padding: 8px 24px;
+  font-size: 14px;
+}
+
+.odoo-popup-retry-btn {
+  min-width: 88px;
+  padding: 8px 24px;
+  font-size: 14px;
+  margin-right: 10px;
+  background: #fff;
+  border: 1px solid #c62828;
+  color: #c62828;
+
+  &:hover {
+    background: #fdecea;
+  }
+}
+
+.odoo-loading-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #1565c0;
+  animation: odooLoadingBounce 1.2s infinite ease-in-out;
+  &:nth-child(1) { animation-delay: 0s; }
+  &:nth-child(2) { animation-delay: 0.2s; }
+  &:nth-child(3) { animation-delay: 0.4s; }
+}
+
+@keyframes odooLoadingBounce {
+  0%, 80%, 100% { transform: scale(0.5); opacity: 0.4; }
+  40%            { transform: scale(1.0); opacity: 1; }
+}
+
+.odoo-popup-loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 30px 0;
+  gap: 10px;
+}

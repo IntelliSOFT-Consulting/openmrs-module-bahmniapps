@@ -2,7 +2,6 @@
 
 angular.module('bahmni.ipd')
     .factory('bedQuotationService', ['$http', function ($http) {
-
         var BASE = '/openmrs/ws/rest/v1/odooconnector/bed-order';
 
         var submitQuotation = function (payload) {

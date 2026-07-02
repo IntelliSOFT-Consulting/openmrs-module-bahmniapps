@@ -399,8 +399,8 @@ angular.module('bahmni.ipd')
                             var modeOfPayment = extractObsValue(modeOfPaymentObs);
                             // Normalise to lowercase so Odoo's case-sensitive validation passes
                             // (e.g. "Cash" -> "cash") — same as the registration consultation-fee flow.
-                            if (typeof paymentMethod === 'string') { paymentMethod = paymentMethod.toLowerCase(); }
-                            if (typeof modeOfPayment === 'string') { modeOfPayment = modeOfPayment.toLowerCase(); }
+                            if (angular.isString(paymentMethod)) { paymentMethod = paymentMethod.toLowerCase(); }
+                            if (angular.isString(modeOfPayment)) { modeOfPayment = modeOfPayment.toLowerCase(); }
                             $scope.quotation.paymentMethod = paymentMethod;
                             $scope.quotation.modeOfPayment = modeOfPayment;
                             // Only ask the user for these if we genuinely found nothing recorded at

@@ -2,7 +2,6 @@
 
 angular.module('bahmni.common.patientSearch')
     .factory('consultationPaymentGateService', ['$http', '$q', function ($http, $q) {
-
         // Checks whether the given service is PAID for this patient/visit. Always resolves to a
         // boolean — any HTTP failure resolves to false (fail-safe: an unreachable billing check
         // blocks access rather than silently allowing it through).

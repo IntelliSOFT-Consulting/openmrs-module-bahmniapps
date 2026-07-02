@@ -143,13 +143,13 @@ angular.module('bahmni.registration')
 
                 var paymentMethodObs = findObsByConceptName(observations, 'Payment Method');
                 var modeOfPaymentObs = findObsByConceptName(observations, 'Mode of Payment');
-                var percentageObs    = findObsByConceptName(observations, 'Enter Percentage Subsidized');
+                var percentageObs = findObsByConceptName(observations, 'Enter Percentage Subsidized');
 
                 var paymentMethod = extractObsValue(paymentMethodObs);
                 var modeOfPayment = extractObsValue(modeOfPaymentObs);
                 // Normalise to lowercase so Odoo's case-sensitive validation passes (e.g. "Cash" → "cash")
-                if (modeOfPayment && typeof modeOfPayment === 'string') { modeOfPayment = modeOfPayment.toLowerCase(); }
-                if (paymentMethod && typeof paymentMethod === 'string') { paymentMethod = paymentMethod.toLowerCase(); }
+                if (modeOfPayment && angular.isString(modeOfPayment)) { modeOfPayment = modeOfPayment.toLowerCase(); }
+                if (paymentMethod && angular.isString(paymentMethod)) { paymentMethod = paymentMethod.toLowerCase(); }
 
                 var percentageSubsidized = (percentageObs && percentageObs.value !== null && percentageObs.value !== undefined)
                     ? percentageObs.value : 0;
@@ -177,12 +177,12 @@ angular.module('bahmni.registration')
 
                 var showFailurePopup = function (title, message) {
                     return showOdooPopup({
-                        type:       'error',
-                        icon:       '✕',
-                        title:      title,
-                        message:    message,
-                        details:    [],
-                        showRetry:  true
+                        type: 'error',
+                        icon: '✕',
+                        title: title,
+                        message: message,
+                        details: [],
+                        showRetry: true
                     }).then(function (action) {
                         if (action === 'retry') {
                             return attemptSync();
@@ -203,11 +203,11 @@ angular.module('bahmni.registration')
 
                             if (d.errorType === 'consultation_already_charged') {
                                 return showOdooPopup({
-                                    type:      'warning',
-                                    icon:      'ℹ',
-                                    title:     'Consultation Fee',
-                                    message:   d.message || 'Consultation fee for the current visit has already been paid.',
-                                    details:   [],
+                                    type: 'warning',
+                                    icon: 'ℹ',
+                                    title: 'Consultation Fee',
+                                    message: d.message || 'Consultation fee for the current visit has already been paid.',
+                                    details: [],
                                     showRetry: false
                                 }).then(function () { deferred.resolve(); });
                             }
@@ -221,8 +221,8 @@ angular.module('bahmni.registration')
                             }
 
                             var details = [];
-                            if (d.status)       { details.push({label: 'Status',       value: d.status}); }
-                            if (d.message)      { details.push({label: 'Message',      value: d.message}); }
+                            if (d.status) { details.push({label: 'Status', value: d.status}); }
+                            if (d.message) { details.push({label: 'Message', value: d.message}); }
                             if (d.patient_name) { details.push({label: 'Patient Name', value: d.patient_name}); }
 
                             var isOdooSuccess = (d.status === 'success' || d.sale_order_name);
@@ -230,17 +230,17 @@ angular.module('bahmni.registration')
                                 // Unrecognised/legacy response shape that isn't explicitly flagged as an
                                 // error — show what we know rather than guessing at a specific cause.
                                 return showOdooPopup({
-                                    type:    'warning',
-                                    icon:    '⚠',
-                                    title:   'Consultation Order Sent to Billing',
+                                    type: 'warning',
+                                    icon: '⚠',
+                                    title: 'Consultation Order Sent to Billing',
                                     details: details
                                 }).then(function () { deferred.resolve(); });
                             }
 
                             return showOdooPopup({
-                                type:    'success',
-                                icon:    '✓',
-                                title:   'Consultation Order Sent to Billing',
+                                type: 'success',
+                                icon: '✓',
+                                title: 'Consultation Order Sent to Billing',
                                 details: details
                             }).then(function () { deferred.resolve(); });
                         })
