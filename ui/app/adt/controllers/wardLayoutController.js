@@ -54,13 +54,13 @@ angular.module('bahmni.adt')
 
             var buildBedOrderPayload = function (bed) {
                 return {
-                    patientUuid:    $scope.patientUuid,
-                    visitUuid:      $scope.visitUuid,
-                    bedId:          bed.bed.bedId,
-                    bedNumber:      bed.bed.bedNumber,
+                    patientUuid: $scope.patientUuid,
+                    visitUuid: $scope.visitUuid,
+                    bedId: bed.bed.bedId,
+                    bedNumber: bed.bed.bedNumber,
                     numberOfNights: 1,
-                    paymentMethod:  'paying',
-                    modeOfPayment:  null
+                    paymentMethod: 'paying',
+                    modeOfPayment: null
                 };
             };
 
