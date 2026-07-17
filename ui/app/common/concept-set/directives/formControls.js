@@ -509,6 +509,14 @@ angular.module("bahmni.common.conceptSet").directive("formControls", [
             }
 
             if (prescriptionSection) {
+        // runPostRenderCustomisations() re-runs on every form.component re-render (form
+        // validation passes, Save included, not just the initial load) — remove any wrapper
+        // left over from a previous pass first, or they'd stack up one on top of another.
+                var existingWrappers = prescriptionSection.getElementsByClassName("prescription-table-wrapper");
+                while (existingWrappers.length) {
+                    existingWrappers[0].parentNode.removeChild(existingWrappers[0]);
+                }
+
         // Create table elements
                 var table = document.createElement("table");
                 table.className = "prescription-table";
@@ -571,46 +579,101 @@ angular.module("bahmni.common.conceptSet").directive("formControls", [
                     table.appendChild(row);
                 });
 
+        // Explanatory note — these cells are a read-only reflection of the Refraction
+        // Record's PG Distance/Near Rx fields above, not separately editable here.
+                var note = document.createElement("div");
+                note.className = "prescription-table-note";
+                note.textContent = "SPH/CYL/Axis/V-A values reflect the Refraction Record above and update automatically.";
+
         // Create wrapper
                 var tableWrapper = document.createElement("div");
                 tableWrapper.className = "prescription-table-wrapper";
+                tableWrapper.appendChild(note);
                 tableWrapper.appendChild(table);
 
         // Insert table
                 prescriptionSection.prepend(tableWrapper);
 
-        // Move pre-populated inputs to the correct cells
-                moveInputsToPrescriptionCells(prescriptionSection, table);
+        // Values are populated/kept in sync by attachPrescriptionSlipSync(), which runs
+        // off the Refraction Record's pg-table (see moveInputsToCells) once it exists —
+        // this section has no SPH/CYL/Axis/V-A fields of its own to move.
             }
         }
 
-    // Move prescription inputs to the correct table cells
-        function moveInputsToPrescriptionCells (section, table) {
-            var inputWrappers = section.getElementsByClassName("form-builder-row");
-      // Mapping: labelText -> {eye, type, row}
-      // Example label: "SPH, Right Eye, Distance"
-            Array.prototype.forEach.call(inputWrappers, function (wrapper) {
-                var label = wrapper.querySelector("label");
-                if (label) {
-                    var labelText = label.textContent.trim();
-          // Match: SPH, Right Eye, Distance
-                    var matches = labelText.match(/^(SPH|CYL|Axis|V\/A),\s*(Right Eye|Left Eye),\s*(Distance|Near)$/);
-                    if (matches) {
-                        var type = matches[1];
-                        var eye = matches[2];
-                        var row = matches[3];
-            // Find matching cell
-                        var cell = table.querySelector(`td[data-eye="${eye}"][data-type="${type}"][data-row="${row}"]`);
-                        if (cell) {
-                            var inputField = wrapper.querySelector(".obs-control-field");
-                            if (inputField) {
-                                cell.appendChild(inputField);
-                                wrapper.style.display = "none";
-                            }
-                        }
-                    }
+    // ---------- Read-only sync: Prescription Slip table <- Refraction Record pg-table ----------
+    // The Prescription Slip's SPH/CYL/Axis/V-A grid has no obs fields of its own; by design
+    // (see task discussion) it mirrors the values already captured in the Refraction Record's
+    // PG Distance/Near Rx fields just above it, read-only, so there is only one place to edit
+    // a prescription and no duplicate data entry.
+
+        var RX_SLIP_FIELD_TO_PG_TYPE = { SPH: "Spherical", CYL: "Cylinder", Axis: "Axis", "V/A": "V/A with PG" };
+        var RX_SLIP_ROW_TO_POWER_TYPE = { Distance: "DV", Near: "NV" };
+
+    // Reads the currently displayed value out of a pg-table input cell — the selected
+    // option's label for the react-select-backed fields (Spherical/Cylinder/V-A), or the
+    // raw text for the plain-text Axis field.
+        function getPGCellDisplayValue (cell) {
+            if (!cell) {
+                return "";
+            }
+            var valueLabel = cell.querySelector(".Select-value-label");
+            if (valueLabel) {
+                return valueLabel.textContent.trim();
+            }
+            var textField = cell.querySelector("textarea, input[type='text'], input:not([type])");
+            if (textField) {
+                return (textField.value || "").trim();
+            }
+            return "";
+        }
+
+        function syncPrescriptionSlipTable (formRoot, pgTable) {
+            var slipTable = formRoot && formRoot.querySelector(".prescription-table");
+            if (!slipTable || !pgTable) {
+                return;
+            }
+            var slipCells = slipTable.querySelectorAll("td.input-cell");
+            Array.prototype.forEach.call(slipCells, function (slipCell) {
+                var eye = slipCell.getAttribute("data-eye");
+                var type = slipCell.getAttribute("data-type");
+                var row = slipCell.getAttribute("data-row");
+                var pgType = RX_SLIP_FIELD_TO_PG_TYPE[type];
+                var powerType = RX_SLIP_ROW_TO_POWER_TYPE[row];
+                if (!pgType || !powerType || !eye) {
+                    return;
+                }
+                var pgEye = eye + " PG " + powerType;
+                var pgCell = pgTable.querySelector(
+                    'td.input-cell[data-eye="' + pgEye + '"][data-type="' + pgType + '"]'
+                );
+                var value = getPGCellDisplayValue(pgCell);
+                if (slipCell.textContent !== value) {
+                    slipCell.textContent = value;
                 }
             });
+        }
+
+    // Attached once per pg-table build: reacts to react-select option insertion (DOM
+    // mutation) and to typing in the Axis textarea (native 'input' event, which does not
+    // mutate the DOM tree and so would not be seen by the MutationObserver alone) so the
+    // read-only slip table stays live as the optometrist fills in the Refraction Record.
+        function attachPrescriptionSlipSync (formRoot, pgTable) {
+            if (!pgTable) {
+                return;
+            }
+            if (pgTable._slipSyncAttached) {
+                syncPrescriptionSlipTable(formRoot, pgTable);
+                return;
+            }
+            pgTable._slipSyncAttached = true;
+            pgTable.addEventListener("input", function () {
+                syncPrescriptionSlipTable(formRoot, pgTable);
+            });
+            var observer = new MutationObserver(function () {
+                syncPrescriptionSlipTable(formRoot, pgTable);
+            });
+            observer.observe(pgTable, { childList: true, subtree: true, characterData: true });
+            syncPrescriptionSlipTable(formRoot, pgTable);
         }
 
         function createFreshPGTable () {
@@ -961,6 +1024,8 @@ angular.module("bahmni.common.conceptSet").directive("formControls", [
                 });
                 logPGTableCellDiagnostics(table);
             }
+
+            attachPrescriptionSlipSync(section, table);
 
             return { pgRowsFound: pgRowsFound, movedCount: movedCount };
         }

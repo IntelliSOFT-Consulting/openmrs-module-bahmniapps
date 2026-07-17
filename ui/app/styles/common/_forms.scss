@@ -303,6 +303,13 @@
   overflow-x: auto;
 }
 
+.prescription-table-note {
+  font-size: 12px;
+  font-style: italic;
+  color: #666;
+  margin-bottom: 6px;
+}
+
 .prescription-table {
   width: 100%;
   border-collapse: collapse;
@@ -330,10 +337,12 @@
   font-weight: bold;
 }
 
-/* Input cell styling */
+/* Input cell styling — read-only text mirrored from the Refraction Record */
 .prescription-table .input-cell {
   padding: 4px;
   position: relative;
+  text-align: center;
+  min-width: 50px;
 }
 
 /* Textarea container styling */
