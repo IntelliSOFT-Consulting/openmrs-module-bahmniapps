@@ -210,7 +210,29 @@ angular.module('bahmni.ipd')
                 }
             };
 
+            // Admission encounter that was saved but whose bed assignment failed. Voiding it does not
+            // revert the Admission Status / Visit Status visit attributes, so a retry must reuse it.
+            var pendingAdmission = null;
+
+            var assignBedAndForward = function (admission) {
+                return assignBedToPatient($rootScope.selectedBedInfo.bed, admission.patientUuid, admission.encounterUuid).then(function () {
+                    pendingAdmission = null;
+                    forwardUrl(admission, "onAdmissionForwardTo");
+                }, function () {
+                    pendingAdmission = admission;
+                    unsetButtonClicked();
+                    messagingService.showMessage("error", "BED_ASSIGNMENT_FAILED_AFTER_ADMISSION_MESSAGE");
+                });
+            };
+
+            var retryPendingBedAssignment = function () {
+                return spinner.forPromise(assignBedAndForward(pendingAdmission));
+            };
+
             var createEncounterAndContinue = function () {
+                if (pendingAdmission) {
+                    return retryPendingBedAssignment();
+                }
                 var currentVisitTypeUuid = getCurrentVisitTypeUuid();
                 if (currentVisitTypeUuid !== null) {
                     var encounterData = getEncounterData($scope.encounterConfig.getAdmissionEncounterTypeUuid(), currentVisitTypeUuid);
@@ -220,9 +242,8 @@ angular.module('bahmni.ipd')
                                 $scope.visitSummary = new Bahmni.Common.VisitSummary(response.data);
                             });
                         }
-                        assignBedToPatient($rootScope.selectedBedInfo.bed, response.data.patientUuid, response.data.encounterUuid);
-                        forwardUrl(response.data, "onAdmissionForwardTo");
-                    }));
+                        return assignBedAndForward(response.data);
+                    }, unsetButtonClicked));
                 } else if ($scope.defaultVisitTypeName === null) {
                     messagingService.showMessage("error", "MESSAGE_DEFAULT_VISIT_TYPE_NOT_FOUND_KEY");
                 } else {
@@ -232,7 +253,7 @@ angular.module('bahmni.ipd')
             };
 
             var assignBedToPatient = function (bed, patientUuid, encounterUuid) {
-                spinner.forPromise(bedService.assignBed(bed.bedId, patientUuid, encounterUuid).then(function () {
+                return bedService.assignBed(bed.bedId, patientUuid, encounterUuid).then(function () {
                     bed.status = "OCCUPIED";
                     $scope.$emit("event:patientAssignedToBed", $rootScope.selectedBedInfo.bed);
                     messagingService.showMessage("info", $translate.instant("BED") + " " + bed.bedNumber + " " + $translate.instant("IS_SUCCESSFULLY_ASSIGNED_MESSAGE"));
@@ -241,10 +262,12 @@ angular.module('bahmni.ipd')
                     // indicators don't keep pointing at a bed that's already done. Best-effort:
                     // there may be no reservation to clear (e.g. admitted without ever using
                     // Submit Quotation), so a failure here is expected and must not be surfaced.
+                    // Not returned: a cancellation failure must not reject the assignment promise
+                    // or block navigation after the bed has already been assigned.
                     bedQuotationService.cancelReservation(bed.bedId, 'Patient admitted').finally(function () {
                         $scope.$emit("event:bedReservationChanged");
                     });
-                }));
+                });
             };
 
             var setButtonClicked = function () {
@@ -289,15 +312,16 @@ angular.module('bahmni.ipd')
             };
 
             $scope.closeCurrentVisitAndStartNewVisit = function () {
-                if (defaultVisitTypeUuid !== null) {
+                if (pendingAdmission) {
+                    retryPendingBedAssignment();
+                } else if (defaultVisitTypeUuid !== null) {
                     var encounter = getEncounterData($scope.encounterConfig.getAdmissionEncounterTypeUuid(), defaultVisitTypeUuid);
                     spinner.forPromise(visitService.endVisitAndCreateEncounter($scope.visitSummary.uuid, encounterService.buildEncounter(encounter)).then(function (response) {
                         spinner.forPromise(visitService.getVisitSummary(response.data.visitUuid).then(function (response) {
                             $scope.visitSummary = new Bahmni.Common.VisitSummary(response.data);
                         }));
-                        assignBedToPatient($rootScope.selectedBedInfo.bed, response.data.patientUuid, response.data.encounterUuid);
-                        forwardUrl(response.data, "onAdmissionForwardTo");
-                    }));
+                        return assignBedAndForward(response.data);
+                    }, unsetButtonClicked));
                 } else if ($scope.defaultVisitTypeName === null) {
                     messagingService.showMessage("error", "MESSAGE_DEFAULT_VISIT_TYPE_NOT_FOUND_KEY");
                 } else {
@@ -567,7 +591,7 @@ angular.module('bahmni.ipd')
                     var bedDetails = response.data;
                     if (!bedDetails.patients.length) {
                         spinner.forPromise(encounterService.create(encounterData).then(function (response) {
-                            assignBedToPatient($rootScope.selectedBedInfo.bed, response.data.patientUuid, response.data.encounterUuid);
+                            spinner.forPromise(assignBedToPatient($rootScope.selectedBedInfo.bed, response.data.patientUuid, response.data.encounterUuid));
                             ngDialog.close();
                             forwardUrl(response.data, "onTransferForwardTo");
                         }));
@@ -623,6 +647,7 @@ angular.module('bahmni.ipd')
                     var bedDetails = response.data;
                     if (bedDetails.patients.length) {
                         showErrorMessage(bedDetails);
+                        unsetButtonClicked();
                         reloadStateWithContextParams();
                         return;
                     }
@@ -632,7 +657,7 @@ angular.module('bahmni.ipd')
                         createEncounterAndContinue();
                         $scope.cancelConfirmationDialog();
                     }
-                }));
+                }, unsetButtonClicked));
             };
         }
     ]);
