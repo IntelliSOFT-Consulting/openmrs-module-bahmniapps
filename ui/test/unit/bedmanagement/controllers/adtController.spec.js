@@ -1,16 +1,17 @@
 'use strict';
 
 describe("AdtController", function () {
-    var scope, state, rootScope, controller, bedService, appService, sessionService, dispositionService, visitService, encounterService, ngDialog, window, messagingService, spinnerService, translate;
+    var scope, state, rootScope, controller, bedService, appService, sessionService, dispositionService, visitService, encounterService, ngDialog, window, messagingService, spinnerService, translate, bedQuotationService, consultationPaymentGateService, observationsService, $q;
 
     beforeEach(function () {
         module('bahmni.ipd');
 
-        inject(function ($controller, $rootScope) {
+        inject(function ($controller, $rootScope, _$q_) {
             controller = $controller;
             rootScope = $rootScope;
             scope = $rootScope.$new();
             scope.patient = { uuid: "patientUuid" };
+            $q = _$q_;
         });
 
         bedService = jasmine.createSpyObj('bedService', ['assignBed', 'getCompleteBedDetailsByBedId']);
@@ -25,6 +26,14 @@ describe("AdtController", function () {
         state = jasmine.createSpyObj('state', ['transitionTo']);
         window = {location: { reload: jasmine.createSpy()} };
         translate = jasmine.createSpyObj('$translate', ['instant']);
+        bedQuotationService = jasmine.createSpyObj('bedQuotationService', ['submitQuotation', 'cancelReservation', 'getActivePatientReservation']);
+        bedQuotationService.submitQuotation.and.returnValue($q.when({data: {}}));
+        bedQuotationService.cancelReservation.and.returnValue($q.when({data: {}}));
+        bedQuotationService.getActivePatientReservation.and.returnValue($q.when({data: {found: false}}));
+        consultationPaymentGateService = jasmine.createSpyObj('consultationPaymentGateService', ['isServicePaid']);
+        consultationPaymentGateService.isServicePaid.and.returnValue($q.when(false));
+        observationsService = jasmine.createSpyObj('observationsService', ['fetch']);
+        observationsService.fetch.and.returnValue($q.when({data: []}));
 
         appService.getAppDescriptor.and.returnValue({
             getConfigValue: function (key) {
@@ -106,6 +115,9 @@ describe("AdtController", function () {
             messagingService : messagingService,
             spinner: spinnerService,
             $translate: translate,
+            bedQuotationService: bedQuotationService,
+            consultationPaymentGateService: consultationPaymentGateService,
+            observationsService: observationsService
         });
     };
 
@@ -792,5 +804,293 @@ describe("AdtController", function () {
         expect(scope.visitSummary.uuid).toBe(visitSummary.uuid);
         expect(visitService.endVisitAndCreateEncounter).toHaveBeenCalledWith("visitUuid", {encounterUuid: 'uuid'});
         expect(ngDialog.close).toHaveBeenCalled();
+    });
+
+    describe("admission and bed assignment sequencing", function () {
+        var $q, freeBed, occupiedBed, admission, assignDeferred, occupant;
+
+        var bedDetailsFor = function (patients) {
+            return $q.when({data: {patients: patients}});
+        };
+
+        var createControllerWithRealPromises = function () {
+            consultationPaymentGateService.isServicePaid.and.returnValue($q.when(true));
+            createController();
+            spinnerService.forPromise.and.callFake(function (promise) {
+                return promise;
+            });
+            // Successful admission and retry scenarios represent a patient who has already paid
+            // for the bed. The payment gate is a separate reason Admit can stay disabled.
+            scope.bedPaymentConfirmed = true;
+        };
+
+        var successMessageCalls = function () {
+            return messagingService.showMessage.calls.allArgs().filter(function (args) {
+                return args[0] === 'info';
+            });
+        };
+
+        var forwardCalls = function () {
+            return state.transitionTo.calls.allArgs().filter(function (args) {
+                return args[1] && args[1].encounterUuid;
+            });
+        };
+
+        beforeEach(inject(function (_$q_) {
+            $q = _$q_;
+            freeBed = {bedId: 5, bedNumber: "IPD-0002"};
+            occupiedBed = {bedId: 1, bedNumber: "IPD-0001"};
+            occupant = {uuid: "occupantUuid", display: "IPD200035 - Test New Paying", identifiers: [{identifier: "IPD200035"}]};
+            admission = {patientUuid: "patientUuid", encounterUuid: "admissionEncounterUuid", visitUuid: "ipdVisitUuid"};
+            rootScope.selectedBedInfo = {bed: freeBed, roomName: "Room1", wardUuid: "wardUuid", wardName: "ward 1"};
+            scope.visitSummary = {"visitType": "IPD", "uuid": "visitUuid"};
+            scope.adtObservations = [];
+            translate.instant.and.callFake(function (value) {
+                return value;
+            });
+            bedService.getCompleteBedDetailsByBedId.and.callFake(function (bedId) {
+                return bedDetailsFor(bedId === occupiedBed.bedId ? [occupant] : []);
+            });
+            encounterService.create.and.returnValue($q.when({data: admission}));
+            assignDeferred = $q.defer();
+            bedService.assignBed.and.returnValue(assignDeferred.promise);
+        }));
+
+        it("should forward and show the success message only after the bed assignment succeeds", function () {
+            createControllerWithRealPromises();
+            scope.buttonClicked = true;
+
+            scope.admitConfirmation();
+            rootScope.$digest();
+
+            expect(encounterService.create).toHaveBeenCalled();
+            expect(bedService.assignBed).toHaveBeenCalledWith(freeBed.bedId, "patientUuid", "admissionEncounterUuid");
+            expect(forwardCalls().length).toBe(0);
+            expect(scope.$emit).not.toHaveBeenCalledWith("event:patientAssignedToBed", jasmine.any(Object));
+            expect(successMessageCalls().length).toBe(0);
+            expect(bedQuotationService.cancelReservation).not.toHaveBeenCalled();
+
+            assignDeferred.resolve({data: {}});
+            rootScope.$digest();
+
+            expect(freeBed.status).toBe("OCCUPIED");
+            expect(scope.$emit).toHaveBeenCalledWith("event:patientAssignedToBed", freeBed);
+            expect(messagingService.showMessage).toHaveBeenCalledWith('info', "BED IPD-0002 IS_SUCCESSFULLY_ASSIGNED_MESSAGE");
+            expect(bedQuotationService.cancelReservation).toHaveBeenCalledWith(freeBed.bedId, 'Patient admitted');
+            expect(scope.$emit).toHaveBeenCalledWith("event:bedReservationChanged");
+            expect(forwardCalls().length).toBe(1);
+            expect(forwardCalls()[0][1]).toEqual({patientUuid: "patientUuid", encounterUuid: "admissionEncounterUuid", visitUuid: "ipdVisitUuid", bedId: freeBed.bedId});
+        });
+
+        it("should not forward or report success, and should restore the Admit button, when bed assignment fails after the admission encounter is created", function () {
+            encounterService.delete = jasmine.createSpy('delete');
+            createControllerWithRealPromises();
+            scope.buttonClicked = true;
+
+            scope.admitConfirmation();
+            assignDeferred.reject({status: 403, data: {error: {message: "Privileges required: Edit Admission Locations"}}});
+            rootScope.$digest();
+
+            expect(encounterService.create.calls.count()).toBe(1);
+            expect(forwardCalls().length).toBe(0);
+            expect(successMessageCalls().length).toBe(0);
+            expect(scope.$emit).not.toHaveBeenCalledWith("event:patientAssignedToBed", jasmine.any(Object));
+            expect(freeBed.status).toBeUndefined();
+            expect(messagingService.showMessage).toHaveBeenCalledWith("error", "BED_ASSIGNMENT_FAILED_AFTER_ADMISSION_MESSAGE");
+            expect(scope.buttonClicked).toBe(false);
+            expect(bedQuotationService.cancelReservation).not.toHaveBeenCalled();
+            rootScope.patient = {uuid: "patientUuid"};
+            rootScope.bedDetails = undefined;
+            expect(scope.bedPaymentConfirmed).toBe(true);
+            expect(scope.disableAdmitButton()).toBe(false);
+            expect(encounterService.delete).not.toHaveBeenCalled();
+        });
+
+        it("should retry the bed assignment against the existing admission encounter instead of creating another admission", function () {
+            createControllerWithRealPromises();
+            scope.admitConfirmation();
+            assignDeferred.reject({status: 500});
+            rootScope.$digest();
+
+            var anotherFreeBed = {bedId: 6, bedNumber: "IPD-0003"};
+            rootScope.selectedBedInfo.bed = anotherFreeBed;
+            bedService.assignBed.and.returnValue($q.when({data: {}}));
+            scope.admit();
+            scope.admitConfirmation();
+            rootScope.$digest();
+
+            expect(encounterService.create.calls.count()).toBe(1);
+            expect(bedService.assignBed.calls.mostRecent().args).toEqual([anotherFreeBed.bedId, "patientUuid", "admissionEncounterUuid"]);
+            expect(scope.$emit).toHaveBeenCalledWith("event:patientAssignedToBed", anotherFreeBed);
+            expect(bedQuotationService.cancelReservation.calls.count()).toBe(1);
+            expect(bedQuotationService.cancelReservation).toHaveBeenCalledWith(anotherFreeBed.bedId, 'Patient admitted');
+            expect(forwardCalls().length).toBe(1);
+        });
+
+        it("should not create an admission encounter, should reset buttonClicked and allow retry with a free bed when the selected bed is occupied", function () {
+            createControllerWithRealPromises();
+            rootScope.selectedBedInfo.bed = occupiedBed;
+            scope.admit();
+            expect(scope.buttonClicked).toBe(true);
+
+            scope.admitConfirmation();
+            rootScope.$digest();
+
+            expect(encounterService.create).not.toHaveBeenCalled();
+            expect(bedService.assignBed).not.toHaveBeenCalled();
+            expect(messagingService.showMessage).toHaveBeenCalledWith('error', "SELECT_AVAILABLE_BED_DEFAULT_MESSAGE");
+            expect(scope.buttonClicked).toBe(false);
+            expect(bedQuotationService.cancelReservation).not.toHaveBeenCalled();
+
+            rootScope.selectedBedInfo.bed = freeBed;
+            rootScope.patient = {uuid: "patientUuid"};
+            rootScope.bedDetails = undefined;
+            expect(scope.bedPaymentConfirmed).toBe(true);
+            expect(scope.disableAdmitButton()).toBe(false);
+
+            scope.admit();
+            scope.admitConfirmation();
+            assignDeferred.resolve({data: {}});
+            rootScope.$digest();
+
+            expect(encounterService.create.calls.count()).toBe(1);
+            expect(bedService.assignBed).toHaveBeenCalledWith(freeBed.bedId, "patientUuid", "admissionEncounterUuid");
+            expect(forwardCalls().length).toBe(1);
+        });
+
+        it("should reset buttonClicked when the bed availability check itself fails", function () {
+            bedService.getCompleteBedDetailsByBedId.and.returnValue($q.reject({status: 500}));
+            createControllerWithRealPromises();
+            scope.buttonClicked = true;
+
+            scope.admitConfirmation();
+            rootScope.$digest();
+
+            expect(encounterService.create).not.toHaveBeenCalled();
+            expect(scope.buttonClicked).toBe(false);
+        });
+
+        it("should reset buttonClicked and not assign a bed when the admission encounter cannot be created", function () {
+            encounterService.create.and.returnValue($q.reject({status: 500}));
+            createControllerWithRealPromises();
+            scope.buttonClicked = true;
+
+            scope.admitConfirmation();
+            rootScope.$digest();
+
+            expect(bedService.assignBed).not.toHaveBeenCalled();
+            expect(forwardCalls().length).toBe(0);
+            expect(scope.buttonClicked).toBe(false);
+        });
+
+        describe("OPD to IPD visit conversion", function () {
+            beforeEach(function () {
+                scope.visitSummary = {"visitType": "Current Visit", "uuid": "opdVisitUuid"};
+                encounterService.buildEncounter.and.returnValue({encounterUuid: 'built'});
+                visitService.endVisitAndCreateEncounter.and.returnValue($q.when({data: admission}));
+                visitService.getVisitSummary.and.returnValue($q.when({data: {visitType: "IPD", uuid: "ipdVisitUuid"}}));
+            });
+
+            it("should forward only after the bed assignment succeeds", function () {
+                createControllerWithRealPromises();
+
+                scope.admitConfirmation();
+                rootScope.$digest();
+
+                expect(visitService.endVisitAndCreateEncounter).toHaveBeenCalledWith("opdVisitUuid", {encounterUuid: 'built'});
+                expect(bedService.assignBed).toHaveBeenCalledWith(freeBed.bedId, "patientUuid", "admissionEncounterUuid");
+                expect(forwardCalls().length).toBe(0);
+                expect(successMessageCalls().length).toBe(0);
+                expect(bedQuotationService.cancelReservation).not.toHaveBeenCalled();
+
+                assignDeferred.resolve({data: {}});
+                rootScope.$digest();
+
+                expect(scope.$emit).toHaveBeenCalledWith("event:patientAssignedToBed", freeBed);
+                expect(successMessageCalls().length).toBe(1);
+                expect(bedQuotationService.cancelReservation).toHaveBeenCalledWith(freeBed.bedId, 'Patient admitted');
+                expect(forwardCalls().length).toBe(1);
+            });
+
+            it("should not forward, should restore the Admit button, and should retry without ending the visit again when bed assignment fails", function () {
+                createControllerWithRealPromises();
+                scope.buttonClicked = true;
+
+                scope.admitConfirmation();
+                assignDeferred.reject({status: 403});
+                rootScope.$digest();
+
+                expect(forwardCalls().length).toBe(0);
+                expect(successMessageCalls().length).toBe(0);
+                expect(messagingService.showMessage).toHaveBeenCalledWith("error", "BED_ASSIGNMENT_FAILED_AFTER_ADMISSION_MESSAGE");
+                expect(scope.buttonClicked).toBe(false);
+                expect(bedQuotationService.cancelReservation).not.toHaveBeenCalled();
+
+                bedService.assignBed.and.returnValue($q.when({data: {}}));
+                scope.visitSummary = {"visitType": "Current Visit", "uuid": "opdVisitUuid"};
+                scope.closeCurrentVisitAndStartNewVisit();
+                rootScope.$digest();
+
+                expect(visitService.endVisitAndCreateEncounter.calls.count()).toBe(1);
+                expect(encounterService.create).not.toHaveBeenCalled();
+                expect(bedService.assignBed.calls.count()).toBe(2);
+                expect(bedService.assignBed.calls.mostRecent().args).toEqual([freeBed.bedId, "patientUuid", "admissionEncounterUuid"]);
+                expect(bedQuotationService.cancelReservation.calls.count()).toBe(1);
+                expect(bedQuotationService.cancelReservation).toHaveBeenCalledWith(freeBed.bedId, 'Patient admitted');
+                expect(forwardCalls().length).toBe(1);
+            });
+
+            it("should reset buttonClicked and not assign a bed when ending the visit fails", function () {
+                visitService.endVisitAndCreateEncounter.and.returnValue($q.reject({status: 500}));
+                createControllerWithRealPromises();
+                scope.buttonClicked = true;
+
+                scope.admitConfirmation();
+                rootScope.$digest();
+
+                expect(bedService.assignBed).not.toHaveBeenCalled();
+                expect(forwardCalls().length).toBe(0);
+                expect(scope.buttonClicked).toBe(false);
+            });
+        });
+
+        it("should keep the existing transfer behaviour of assigning the bed, closing the dialog and forwarding", function () {
+            rootScope.bedDetails = {bedId: 9};
+            encounterService.create.and.returnValue($q.when({data: {patientUuid: "patientUuid", encounterUuid: "transferEncounterUuid"}}));
+            createControllerWithRealPromises();
+
+            scope.transferConfirmation();
+            assignDeferred.resolve({data: {}});
+            rootScope.$digest();
+
+            expect(bedService.assignBed).toHaveBeenCalledWith(freeBed.bedId, "patientUuid", "transferEncounterUuid");
+            expect(scope.$emit).toHaveBeenCalledWith("event:patientAssignedToBed", freeBed);
+            expect(bedQuotationService.cancelReservation).toHaveBeenCalledWith(freeBed.bedId, 'Patient admitted');
+            expect(ngDialog.close).toHaveBeenCalled();
+            expect(forwardCalls().length).toBe(1);
+        });
+
+        it("should keep Admit disabled when bed payment is not confirmed even after buttonClicked is reset", function () {
+            createControllerWithRealPromises();
+            scope.bedPaymentConfirmed = false;
+            consultationPaymentGateService.isServicePaid.and.returnValue($q.when(false));
+            rootScope.patient = {uuid: "patientUuid"};
+            rootScope.bedDetails = undefined;
+            scope.buttonClicked = false;
+
+            expect(scope.disableAdmitButton()).toBe(true);
+
+            rootScope.selectedBedInfo.bed = occupiedBed;
+            scope.admit();
+            expect(scope.buttonClicked).toBe(true);
+
+            scope.admitConfirmation();
+            rootScope.$digest();
+
+            expect(encounterService.create).not.toHaveBeenCalled();
+            expect(scope.buttonClicked).toBe(false);
+            expect(scope.bedPaymentConfirmed).toBe(false);
+            expect(scope.disableAdmitButton()).toBe(true);
+        });
     });
 });
