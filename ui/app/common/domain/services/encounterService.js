@@ -318,6 +318,7 @@ angular.module("bahmni.common.domain").service("encounterService", [
         .then(
           function (response) {
               encounter.encounterUuid = response.data.encounterUuid;
+              encounter.visitUuid = response.data.visitUuid || encounter.visitUuid;
               encounter.encounterDateTime = response.data.encounterDateTime;
               encounter.observations = getGlassObs(response.data);
               this.sendToOdoo(encounter);
